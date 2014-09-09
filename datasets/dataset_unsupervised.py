@@ -206,7 +206,7 @@ class Dataset_Iter_Rand_Uniform_wo_replace(Basic_Iter):
 			
 if __name__ == "__main__":
 	print('Making Datset Object')
-	X = np.zeros((1000, 3, 5, 5))
+	X = np.zeros((1024, 3, 5, 5))
 	d = dataset_u(X)
 	#NUM_SAMPLES = d.get_num_samples()
 	#print('NUM SAMPLES: {}'.format(NUM_SAMPLES))

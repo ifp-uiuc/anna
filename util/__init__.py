@@ -6,16 +6,26 @@ from time import time
 from datetime import datetime
 import cPickle
 
-def save_checkpoint(all_parameters):
-    model_check = [param.get_value() for param in all_parameters]
+def load_checkpoint(model, checkpoint_path):
+    all_parameters = model.all_parameters_symbol
+    f = open(checkpoint_path, 'rb')
+    checkpoint = cPickle.load(f)
+    f.close()
+    
+    [model_param.set_value(checkpoint_param) for model_param, checkpoint_param 
+     in zip(all_parameters, checkpoint)]
+
+def save_checkpoint(model):
+    all_parameters = model.all_parameters_symbol
+    checkpoint = [param.get_value() for param in all_parameters]
     tt = datetime.now()
     time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')
-    check_name = 'cifar10-%s.pkl' % time_string
-    path_name = os.path.join('/experiments/cifar10-2/', check_name)
+    checkpoint_name = '%s-%s.pkl' % (model.name, time_string)
+    checkpoint_path = os.path.join(model.path, checkpoint_name)
 
-    print 'Saving model checkpoint to: %s' % path_name
-    f = open(path_name, 'wb')
-    cPickle.dump(model_check, f)
+    print 'Saving model checkpoint to: %s' % checkpoint_path
+    f = open(checkpoint_path, 'wb')
+    cPickle.dump(checkpoint, f)
     f.close()
 
 class Monitor(object):
@@ -49,7 +59,7 @@ class Monitor(object):
             self.big_times = []
             if mean_error < self.best:
                 self.best = mean_error
-                save_checkpoint(self.model.all_parameters_symbol)
+                save_checkpoint(self.model)
         if self.step_number % self.short_steps == 0:
             mean_error = numpy.mean(self.errors)
             mean_time = numpy.mean(self.times)

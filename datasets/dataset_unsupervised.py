@@ -27,7 +27,7 @@ class dataset_u(object):
 					
 			if batch_size is None:
 				if num_batches is not None:
-					batch_size = int(np.ceil(self.n_samples / num_batches))
+					batch_size = int(self.n_samples / num_batches)
 				else:
 					raise ValueError("need one of batch_size, num_batches"
 									 "for sequential batch iteration")
@@ -42,7 +42,7 @@ class dataset_u(object):
 										(self.n_samples, max_num_batches,
 										 batch_size, num_batches))
 				else:
-					num_batches = int(np.ceil(self.n_samples / batch_size))
+					num_batches = int(self.n_samples / batch_size)
 		
 		
 			self.iter = Dataset_Iter_Seq(self.X, batch_size, num_batches, self.n_samples)	
@@ -52,6 +52,29 @@ class dataset_u(object):
 			return self.iter
 			
 		elif(iter_mode == 'RAND_UNIF_nr'):
+		
+			if batch_size is None:
+				if num_batches is not None:
+					# Floor Function chosen to ensure that uneven segment (i.e. "runt") is ignored
+					batch_size = int(np.floor(np.float32(self.n_samples) / num_batches))
+				else:
+					raise ValueError("need one of batch_size, num_batches"
+									 "for sequential batch iteration")
+									 
+			elif batch_size is not None:
+				if num_batches is not None:
+					max_num_batches = int(np.ceil(self.n_samples / batch_size))
+					if num_batches > max_num_batches:
+						raise ValueError("dataset of %d examples can only provide "
+										 "%d batches with batch_size %d, but %d "
+										 "batches were requested" %
+										(self.n_samples, max_num_batches,
+										 batch_size, num_batches))
+				else:
+					# Floor Function chosen to ensure that uneven segment (i.e. "runt") is ignored
+					num_batches = int(np.floor(np.float32(self.n_samples) / batch_size))
+					
+		
 			self.iter = Dataset_Iter_Rand_Uniform_wo_replace(self.X, batch_size, num_batches, self.n_samples, rng_seed)
 			return self.iter
 			
@@ -172,10 +195,10 @@ class Dataset_Iter_Rand_Uniform_wo_replace(Basic_Iter):
 			_idx = np.random.permutation(np.arange(len(self._remain_samples)))[0:self._batch_size]
 			self._last = self._remain_samples[_idx]
 			self._remain_samples = np.setdiff1d(self._remain_samples, self._last)
-			# print('_idx: {}'.format(_idx))
-			# print('_last: {}'.format(self._last))
-			# print('_remain_samples: {}'.format(self._remain_samples))
-			# g=raw_input('...')
+			#print('_idx: {}'.format(_idx))
+			#print('_last: {}'.format(self._last))
+			#print('_remain_samples: {}'.format(self._remain_samples))
+			#g=raw_input('...')
 			
 			self._batch_count += 1
 			return X[self._last, :, :, :]			
@@ -183,13 +206,14 @@ class Dataset_Iter_Rand_Uniform_wo_replace(Basic_Iter):
 			
 if __name__ == "__main__":
 	print('Making Datset Object')
-	X = np.random.rand((100, 3, 5, 5))
+	X = np.zeros((1000, 3, 5, 5))
 	d = dataset_u(X)
 	#NUM_SAMPLES = d.get_num_samples()
 	#print('NUM SAMPLES: {}'.format(NUM_SAMPLES))
 	
-	#d.iterator(num_batches = 25)
-	d_i = d.iterator(iter_mode='RAND_UNIF', batch_size=10, num_batches = 10, rng_seed=10)
+	d.iterator(batch_size=128)
+	#d.iterator(iter_mode='RAND_UNIF', batch_size=128, num_batches = 1000, rng_seed=10)
+	#d.iterator(iter_mode='RAND_UNIF_nr', batch_size=128)
 	for i, b in enumerate(d):
 		print('Batch {} --- {}'.format(i+1, b.shape))
 		

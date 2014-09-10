@@ -65,7 +65,7 @@ class UnsupervisedDataset(object):
             self.iter = DatasetIteratorRandomUniform(self.X, batch_size, num_batches, self.n_samples, rng_seed)
 
             
-        elif(mode == 'RAND_UNIF_nr'):      
+        elif(mode == 'random_uniform_no_rep'):      
             if batch_size is None:
                 if num_batches is not None:
                     # Floor Function chosen to ensure that uneven segment (i.e. "runt") is ignored

@@ -6,6 +6,8 @@ from time import time
 from datetime import datetime
 import cPickle
 
+from pylearn2.space import Conv2DSpace
+
 def load_checkpoint(model, checkpoint_path):
     all_parameters = model.all_parameters_symbol
     f = open(checkpoint_path, 'rb')
@@ -76,7 +78,10 @@ class Evaluator(object):
         self.dataset = dataset
     
     def run(self):
-        iterator = self.dataset.iterator(mode='sequential', batch_size=128, topo=True)
+        input_convspace = Conv2DSpace(shape=(32, 32), num_channels=3,
+                                      axes=('c', 0, 1, 'b'))
+        data_specs = (input_convspace,'features')
+        iterator = self.dataset.iterator(mode='sequential', batch_size=128, data_specs=data_specs)
         errors = []
         if self.step_number % self.steps == 0:
             tic = time()

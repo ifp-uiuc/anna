@@ -1,7 +1,17 @@
+import os
+import Image
+
+import numpy
+
 import pylearn2.datasets.cifar10 as cifar10
 from pylearn2.space import Conv2DSpace
 import model as Model
 import util
+
+def rescale(data):
+	data = data/2.0*255.0
+	data[data > 255.0] = 255.0
+	return data
 
 model = Model.Model('deconv-cifar10', '/experiments/deconv/cifar10/')
 util.load_checkpoint(model, '/experiments/cifar10/cifar10-09m-09d-01h-25m-08s.pkl')
@@ -22,6 +32,9 @@ x_hat = model.prediction(x)
 x_hat = x_hat.transpose(3,1,2,0)
 x = x.transpose(3,1,2,0)
 
-i = numpy.random.randint(128)
-pyplot.imshow(numpy.uint8(rescale(numpy.vstack((x[i,:,:,:],x_hat[i,:,:,:])))))
-pyplot.colorbar()
+for i in range(128):
+	image_array = numpy.uint8(rescale(numpy.hstack((x[i,:,:,:],x_hat[i,:,:,:]))))
+	image = Image.fromarray(image_array)
+	filename = 'recon-%02d.jpeg' % i
+	filepath = os.path.join('/experiments/results/cifar10-fixed/', filename)
+	image.save(filepath)

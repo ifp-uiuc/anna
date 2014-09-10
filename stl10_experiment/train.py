@@ -1,14 +1,11 @@
 import numpy
 
-from pylearn2.space import Conv2DSpace
-
 import datasets.unsupervised_dataset as unsupervised_dataset
 import model as Model
 import util
 
 if __name__ == "__main__":
-    model = Model.Model('deconv-stl10_lr01', '/experiments/deconv/stl10')
-    util.load_checkpoint(model, '/experiments/deconv/stl10/deconv-stl10-09m-10d-17h-10m-57s.pkl')
+    model = Model.Model('deconv-stl10', '/experiments/deconv/stl10')
     monitor = util.Monitor(model)
 
     data = numpy.load('/data/stl10_matlab/unsupervised.npy')

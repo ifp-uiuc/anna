@@ -168,7 +168,8 @@ class DatasetIteratorRandomUniform(BasicIterator):
         np.random.seed(rng_seed)
         super(DatasetIteratorRandomUniform, self).__init__(X, batch_size, num_batches, num_samples)
 
-        
+    def __iter__(self):
+        return self    
         
     def next(self):
         if self.batch_count >= self.num_batches:
@@ -192,6 +193,8 @@ class DatasetIteratorRandomUniformNoRep(BasicIterator):
         self.remain_samples = np.arange(num_samples)
         super(DatasetIteratorRandomUniformNoRep, self).__init__(X, batch_size, num_batches, num_samples)
 
+    def __iter__(self):
+        return self   
         
         
     def next(self):

@@ -93,3 +93,18 @@ class Evaluator(object):
             mean_error = numpy.mean(errors)
             print '%d, test error: %.3f, time: %.2f' % (self.step_number, mean_error, _time)
         self.step_number += 1
+
+def get_cifar_iterator(which_set, mode='sequential', batch_size=128, num_batches=None, center=False, rescale=True, axes=['c', 0, 1, 'b']):
+    dataset = cifar10.CIFAR10(which_set=which_set,
+                              center=center,
+                              rescale=rescale,
+                              axes=axes
+                              )
+    input_convspace = Conv2DSpace(shape=(32, 32), num_channels=3,
+                              axes=axes)
+    data_specs = (input_convspace,'features')
+    if num_batches:
+        iterator = dataset.iterator(mode=mode, batch_size=batch_size, num_batches=num_batches, data_specs=data_specs)
+    else:
+        iterator = dataset.iterator(mode=mode, batch_size=batch_size, data_specs=data_specs)
+    return iterator

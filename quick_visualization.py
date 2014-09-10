@@ -9,13 +9,13 @@ import model as Model
 import util
 
 def rescale(data):
-	data = data/2.0*255.0
-	data[data > 255.0] = 255.0
-	return data
+    data = data/2.0*255.0
+    data[data > 255.0] = 255.0
+    return data
 
 model = Model.Model('deconv-cifar10', '/experiments/deconv/cifar10/')
-util.load_checkpoint(model, '/experiments/cifar10/cifar10-09m-09d-01h-25m-08s.pkl')
-
+# util.load_checkpoint(model, '/experiments/cifar10/cifar10-09m-09d-01h-25m-08s.pkl')
+util.load_checkpoint(model, '/experiments/deconv/cifar10-fixed-144x144/deconv-cifar10-fixed-144x144-09m-10d-10h-17m-53s.pkl')
 test_dataset = cifar10.CIFAR10(which_set='test',
                                rescale=True,
                                axes=['c', 0, 1, 'b']
@@ -33,8 +33,8 @@ x_hat = x_hat.transpose(3,1,2,0)
 x = x.transpose(3,1,2,0)
 
 for i in range(128):
-	image_array = numpy.uint8(rescale(numpy.hstack((x[i,:,:,:],x_hat[i,:,:,:]))))
-	image = Image.fromarray(image_array)
-	filename = 'recon-%02d.jpeg' % i
-	filepath = os.path.join('/experiments/results/cifar10-fixed/', filename)
-	image.save(filepath)
+    image_array = numpy.uint8(rescale(numpy.hstack((x[i,:,:,:],x_hat[i,:,:,:]))))
+    image = Image.fromarray(image_array)
+    filename = 'recon-%02d.jpeg' % i
+    filepath = os.path.join('/experiments/results/cifar10-fixed-144x144/', filename)
+    image.save(filepath)

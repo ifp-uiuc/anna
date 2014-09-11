@@ -8,19 +8,19 @@ from layers import layers, cc_layers
 theano.config.floatX = 'float32'
 
 class Model(object):
-    input = cc_layers.CudaConvnetInput2DLayer(128, 3, 96, 96)
+    input = cc_layers.CudaConvnetInput2DLayer(128, 3, 32, 32)
     conv1 = cc_layers.CudaConvnetConv2DLayer(input, 
-                                             n_filters=32,
+                                             n_filters=144,
                                              filter_size=3,
                                              weights_std=0.01,
                                              init_bias_value=0.1)
     conv2 = cc_layers.CudaConvnetConv2DLayer(conv1, 
-                                             n_filters=64,
+                                             n_filters=144,
                                              filter_size=3,
                                              weights_std=0.01,
                                              init_bias_value=0.1)
     deconv3 = cc_layers.CudaConvnetDeconv2DLayer(conv2,
-                                                 n_channels=32,
+                                                 n_channels=144,
                                                  filter_size=3,
                                                  weights_std=0.01,
                                                  init_bias_value=0.1)

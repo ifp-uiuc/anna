@@ -56,7 +56,7 @@ class Monitor(object):
         if self.step_number % self.long_steps == 0:
             mean_error = numpy.mean(self.big_errors)
             mean_time = numpy.mean(self.big_times)
-            print '*%d, train error: %.3f, time: %.2f' % (self.step_number, mean_error, mean_time)
+            print '*%d, train error: %.5f, time: %.2f' % (self.step_number, mean_error, mean_time)
             self.big_errors = []
             self.big_times = []
             if mean_error < self.best:
@@ -65,7 +65,7 @@ class Monitor(object):
         if self.step_number % self.short_steps == 0:
             mean_error = numpy.mean(self.errors)
             mean_time = numpy.mean(self.times)
-            print '%d, train error: %.3f, time: %.2f' % (self.step_number, mean_error, mean_time)
+            print '%d, train error: %.5f, time: %.2f' % (self.step_number, mean_error, mean_time)
             self.errors = []
             self.times = []
         self.step_number += 1

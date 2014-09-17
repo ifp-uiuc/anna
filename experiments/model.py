@@ -14,21 +14,7 @@ class Model(object):
                                              filter_size=3,
                                              weights_std=0.01,
                                              init_bias_value=0.1)
-    conv2 = cc_layers.CudaConvnetConv2DLayer(conv1, 
-                                             n_filters=64,
-                                             filter_size=3,
-                                             weights_std=0.01,
-                                             init_bias_value=0.1)
-    deconv3 = cc_layers.CudaConvnetDeconv2DLayer(conv2,
-                                                 n_channels=32,
-                                                 filter_size=3,
-                                                 weights_std=0.01,
-                                                 init_bias_value=0.1)
-    deconv4 = cc_layers.CudaConvnetDeconv2DLayer(deconv3,
-                                                 n_channels=3,
-                                                 filter_size=3,
-                                                 weights_std=0.01,
-                                                 init_bias_value=0.1)
+    output = cc_layers.CudaConvnetDeconv2DLayer(conv1, conv1)
     
     def __init__(self, name, path):
         self.name = name
@@ -37,9 +23,14 @@ class Model(object):
     
         # can switch to gen_updates_regular_momentum
         self.learning_rate_symbol = theano.shared(numpy.array(0.01, dtype=theano.config.floatX))
-        self.updates_symbol = layers.gen_updates_sgd(self._get_cost_symbol(),
-                                                     self.all_parameters_symbol,
-                                                     learning_rate=self.learning_rate_symbol)
+        #self.updates_symbol = layers.gen_updates_sgd(self._get_cost_symbol(),
+        #                                             self.all_parameters_symbol,
+        #                                             learning_rate=self.learning_rate_symbol)
+        self.updates_symbol = layers.gen_updates_regular_momentum(self._get_cost_symbol(),
+                                                                  self.all_parameters_symbol,
+                                                                  learning_rate=self.learning_rate_symbol,
+                                                                  momentum=0.9,
+                                                                  weight_decay=1e-5)
 
         self.train_func = theano.function([self._get_input_symbol()],
                                            self._get_cost_symbol(),
@@ -52,7 +43,7 @@ class Model(object):
         return self.input.output()
     
     def _get_output_symbol(self):
-        return self.deconv4.output()
+        return self.output.output()
     
     def _get_cost_symbol(self):
         input = self._get_input_symbol()
@@ -61,7 +52,7 @@ class Model(object):
         return cost
 
     def _get_output_layer(self):
-        return self.deconv4
+        return self.output
     
     def train(self, batch):
         return self.train_func(batch)

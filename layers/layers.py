@@ -9,7 +9,6 @@ import sys
 import os
 import cPickle as pickle
 
-
 srng = RandomStreams()
 
 # nonlinearities
@@ -20,6 +19,12 @@ tanh = T.tanh
 
 def rectify(x):
     return T.maximum(x, 0.0)
+
+def a_rectify(x, a):
+    return (1-a)*x + (a)*rectify(x)
+
+def a_trec(x, a):
+    return x*(T.abs_(x) > a)
     
 def identity(x):
     # To create a linear layer.
@@ -415,9 +420,86 @@ class DenseLayer(object):
     def rescaling_updates(self, c):
         return [(self.W, self.rescaled_weights(c))]
 
+class DenseLayerNoBias(object):
+    def __init__(self, input_layer, n_outputs, weights_std, nonlinearity=rectify, dropout=0.):
+        self.n_outputs = n_outputs
+        self.input_layer = input_layer
+        self.weights_std = np.float32(weights_std)
+        self.nonlinearity = nonlinearity
+        self.dropout = dropout
+        self.mb_size = self.input_layer.mb_size
+
+        input_shape = self.input_layer.get_output_shape()
+        self.n_inputs = int(np.prod(input_shape[1:]))
+        self.flatinput_shape = (self.mb_size, self.n_inputs)
+
+        self.W = shared_single(2) # theano.shared(np.random.randn(self.n_inputs, n_outputs).astype(np.float32) * weights_std)
+        self.params = [self.W]
+        self.reset_params()
+
+    def reset_params(self):
+        self.W.set_value(np.random.randn(self.n_inputs, self.n_outputs).astype(np.float32) * self.weights_std)
+
+    def get_output_shape(self):
+        return (self.mb_size, self.n_outputs)
+
+    def output(self, input=None, dropout_active=True, *args, **kwargs): # use the 'dropout_active' keyword argument to disable it at test time. It is on by default.
+        if input == None:
+            input = self.input_layer.output(dropout_active=dropout_active, *args, **kwargs)
+        if len(self.input_layer.get_output_shape()) > 2:
+            input = input.reshape(self.flatinput_shape)
+
+        if dropout_active and (self.dropout > 0.):
+            retain_prob = 1 - self.dropout
+            input = input / retain_prob * srng.binomial(input.shape, p=retain_prob, dtype='int32').astype('float32')
+            # apply the input mask and rescale the input accordingly. By doing this it's no longer necessary to rescale the weights at test time.
+
+        return self.nonlinearity(T.dot(input, self.W))
+
+    def rescaled_weights(self, c): # c is the maximal norm of the weight vector going into a single filter.
+        norms = T.sqrt(T.sqr(self.W).mean(0, keepdims=True))
+        scale_factors = T.minimum(c / norms, 1)
+        return self.W * scale_factors
+
+    def rescaling_updates(self, c):
+        return [(self.W, self.rescaled_weights(c))]
 
 
+class ADenseLayer(DenseLayer):
+    def __init__(self, input_layer, n_outputs, weights_std, init_bias_value, nonlinearity=a_rectify, dropout=0.):
+        self.alpha = theano.shared(np.array(0.0, dtype=theano.config.floatX))
+        super(ADenseLayer, self).__init__(input_layer, n_outputs, weights_std, init_bias_value, nonlinearity=nonlinearity, dropout=dropout)
 
+    def output(self, input=None, dropout_active=True, *args, **kwargs): # use the 'dropout_active' keyword argument to disable it at test time. It is on by default.
+        if input == None:
+            input = self.input_layer.output(dropout_active=dropout_active, *args, **kwargs)
+        if len(self.input_layer.get_output_shape()) > 2:
+            input = input.reshape(self.flatinput_shape)
+
+        if dropout_active and (self.dropout > 0.):
+            retain_prob = 1 - self.dropout
+            input = input / retain_prob * srng.binomial(input.shape, p=retain_prob, dtype='int32').astype('float32')
+            # apply the input mask and rescale the input accordingly. By doing this it's no longer necessary to rescale the weights at test time.
+
+        return self.nonlinearity(T.dot(input, self.W) + self.b.dimshuffle('x', 0), self.alpha)
+
+class ADenseLayerNoBias(DenseLayerNoBias):
+    def __init__(self, input_layer, n_outputs, weights_std, nonlinearity=rectify, dropout=0.):
+        self.alpha = theano.shared(np.array(0.0, dtype=theano.config.floatX))
+        super(ADenseLayerNoBias, self).__init__(input_layer, n_outputs, weights_std, nonlinearity=nonlinearity, dropout=dropout)
+
+    def output(self, input=None, dropout_active=True, *args, **kwargs): # use the 'dropout_active' keyword argument to disable it at test time. It is on by default.
+        if input == None:
+            input = self.input_layer.output(dropout_active=dropout_active, *args, **kwargs)
+        if len(self.input_layer.get_output_shape()) > 2:
+            input = input.reshape(self.flatinput_shape)
+
+        if dropout_active and (self.dropout > 0.):
+            retain_prob = 1 - self.dropout
+            input = input / retain_prob * srng.binomial(input.shape, p=retain_prob, dtype='int32').astype('float32')
+            # apply the input mask and rescale the input accordingly. By doing this it's no longer necessary to rescale the weights at test time.
+
+        return self.nonlinearity(T.dot(input, self.W), self.alpha)
 
 class ConvLayer(object):
     def __init__(self, input_layer, n_filters, filter_length, weights_std, init_bias_value, nonlinearity=rectify, flip_conv_dims=False, dropout=0.):

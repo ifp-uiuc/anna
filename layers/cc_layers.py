@@ -11,11 +11,11 @@ import layers
 from theano.sandbox.cuda.basic_ops import gpu_contiguous
 from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
 from pylearn2.sandbox.cuda_convnet.img_acts import ImageActs
-from pylearn2.sandbox.cuda_convnet.pool import MaxPool
+from pylearn2.sandbox.cuda_convnet.pool import MaxPool, MaxPoolGrad
 from pylearn2.sandbox.cuda_convnet.stochastic_pool import StochasticMaxPool, WeightedMaxPool
 from pylearn2.sandbox.cuda_convnet.response_norm import CrossMapNorm
 from theano.sandbox.cuda import host_from_gpu
-
+from theano.tensor import as_tensor_variable
 
 class CudaConvnetInput2DLayer(layers.Input2DLayer):
     """
@@ -34,7 +34,10 @@ class CudaConvnetConv2DLayer(object):
         n_filters should be a multiple of 16
         """
         self.input_layer = input_layer
+        self.input_shape = self.input_layer.get_output_shape()
         self.n_filters = n_filters
+        n_channels = self.input_shape[0]
+        self.n_channels = n_channels
         self.filter_size = filter_size
         self.weights_std = np.float32(weights_std)
         self.init_bias_value = np.float32(init_bias_value)
@@ -47,9 +50,7 @@ class CudaConvnetConv2DLayer(object):
         # if untie_biases == True, each position in the output map has its own bias (as opposed to having the same bias everywhere for a given filter)
         self.mb_size = self.input_layer.mb_size
 
-        self.input_shape = self.input_layer.get_output_shape()
-
-        self.filter_shape = (self.input_shape[0], filter_size, filter_size, n_filters)
+        self.filter_shape = (n_channels, filter_size, filter_size, n_filters)
 
         self.W = layers.shared_single(4) # theano.shared(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
 
@@ -99,59 +100,193 @@ class CudaConvnetConv2DLayer(object):
 
         return self.nonlinearity(conved)
 
+class ACudaConvnetConv2DLayer(CudaConvnetConv2DLayer):
+    def __init__(self,
+                 input_layer,
+                 n_filters,
+                 filter_size,
+                 weights_std,
+                 init_bias_value,
+                 stride=1,
+                 nonlinearity=layers.a_rectify,
+                 dropout=0.,
+                 partial_sum=None,
+                 pad=0,
+                 untie_biases=False):
+        self.alpha = theano.shared(np.array(0.0, dtype=theano.config.floatX))
+        super(ACudaConvnetConv2DLayer, self).__init__(input_layer,
+                                                      n_filters,
+                                                      filter_size,
+                                                      weights_std,
+                                                      init_bias_value,
+                                                      stride=stride,
+                                                      nonlinearity=nonlinearity,
+                                                      dropout=dropout,
+                                                      partial_sum=partial_sum,
+                                                      pad=pad,
+                                                      untie_biases=untie_biases)
+
+    def output(self, input=None, dropout_active=True, *args, **kwargs):
+        if input == None:
+            input = self.input_layer.output(dropout_active=dropout_active, *args, **kwargs)
+
+        if dropout_active and (self.dropout > 0.):
+            retain_prob = 1 - self.dropout
+            mask = layers.srng.binomial(input.shape, p=retain_prob, dtype='int32').astype('float32')
+                # apply the input mask and rescale the input accordingly. By doing this it's no longer necessary to rescale the weights at test time.
+            input = input / retain_prob * mask
+
+        contiguous_input = gpu_contiguous(input)
+        contiguous_filters = gpu_contiguous(self.W)
+        conved = self.filter_acts_op(contiguous_input, contiguous_filters)
+
+        if self.untie_biases:
+            conved += self.b.dimshuffle(0, 1, 2, 'x')
+        else:
+            conved += self.b.dimshuffle(0, 'x', 'x', 'x')
+
+        return self.nonlinearity(conved, self.alpha)
+
+# class CudaConvnetDeconv2DLayer(object):
+#     def __init__(self,
+#                  input_layer,
+#                  n_channels,
+#                  filter_size,
+#                  weights_std,
+#                  init_bias_value,
+#                  stride=1,
+#                  nonlinearity=layers.rectify,
+#                  dropout=0.,
+#                  partial_sum=None,
+#                  pad=0,
+#                  untie_biases=False,
+#                  shape=None):
+#         """
+#         Only the valid border mode is supported.
+
+#         n_filters should be a multiple of 16
+#         """
+#         self.input_layer = input_layer
+#         self.input_shape = self.input_layer.get_output_shape()
+#         n_filters = self.input_shape[0]
+
+#         self.n_channels = n_channels
+#         self.n_filters = n_filters
+#         self.filter_size = filter_size
+#         self.weights_std = np.float32(weights_std)
+#         self.init_bias_value = np.float32(init_bias_value)
+#         self.stride = stride
+#         self.nonlinearity = nonlinearity
+#         self.dropout = dropout
+#         self.partial_sum = partial_sum
+#         self.pad = pad
+#         self.untie_biases = untie_biases
+#         self.shape = shape
+#         # if untie_biases == True, each position in the output map has its own bias (as opposed to having the same bias everywhere for a given filter)
+#         self.mb_size = self.input_layer.mb_size
+
+#         #self.filter_shape = (self.input_shape[0], filter_size, filter_size, n_filters)
+#         self.filter_shape = (n_channels, filter_size, filter_size, n_filters)
+
+#         self.W = layers.shared_single(4) # theano.shared(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
+
+#         if self.untie_biases:
+#             self.b = layers.shared_single(3)
+#         else:
+#             self.b = layers.shared_single(1) # theano.shared(np.ones(n_filters).astype(np.float32) * self.init_bias_value)
+
+#         self.params = [self.W, self.b]
+#         self.bias_params = [self.b]
+#         self.reset_params()
+
+#         self.image_acts_op = ImageActs(stride=self.stride, partial_sum=self.partial_sum, pad=self.pad)
+
+#     def reset_params(self):
+#         self.W.set_value(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
+
+#         if self.untie_biases:
+#             self.b.set_value(np.ones(self.get_output_shape()[:3]).astype(np.float32) * self.init_bias_value)
+#         else:
+#             self.b.set_value(np.ones(self.n_filters).astype(np.float32) * self.init_bias_value)
+
+#     def get_output_shape(self):
+#         if self.stride == 1:
+#             output_width = self.input_shape[1]*self.stride + self.filter_size - self.stride - 2 * self.pad
+#             output_height = self.input_shape[2]*self.stride + self.filter_size - self.stride - 2 * self.pad
+#         else:
+#             output_width, output_height = self.shape
+#         output_shape = (self.n_channels, output_width, output_height, self.mb_size)
+#         return output_shape
+
+#     def output(self, input=None, dropout_active=True, *args, **kwargs):
+#         if input == None:
+#             input = self.input_layer.output(dropout_active=dropout_active, *args, **kwargs)
+
+#         if self.untie_biases:
+#             input -= self.b.dimshuffle(0, 1, 2, 'x')
+#         else:
+#             input -= self.b.dimshuffle(0, 'x', 'x', 'x')
+
+#         if dropout_active and (self.dropout > 0.):
+#             retain_prob = 1 - self.dropout
+#             mask = layers.srng.binomial(input.shape, p=retain_prob, dtype='int32').astype('float32')
+#                 # apply the input mask and rescale the input accordingly. By doing this it's no longer necessary to rescale the weights at test time.
+#             input = input / retain_prob * mask
+
+#         contiguous_input = gpu_contiguous(input)
+#         contiguous_filters = gpu_contiguous(self.W)
+#         if self.stride==1:
+#             deconved = self.image_acts_op(contiguous_input, contiguous_filters)
+#         else:
+#             deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable(self.shape))
+#         return self.nonlinearity(deconved)
+
 class CudaConvnetDeconv2DLayer(object):
-    def __init__(self, input_layer, n_channels, filter_size, weights_std, init_bias_value, stride=1, nonlinearity=layers.rectify, dropout=0., partial_sum=None, pad=0, untie_biases=False):
+    def __init__(self,
+                 input_layer,
+                 mirror_layer):
         """
         Only the valid border mode is supported.
 
         n_filters should be a multiple of 16
         """
+
+        self.mirror_layer = mirror_layer
+
         self.input_layer = input_layer
         self.input_shape = self.input_layer.get_output_shape()
         n_filters = self.input_shape[0]
 
-        self.n_channels = n_channels
-        self.n_filters = n_filters
-        self.filter_size = filter_size
-        self.weights_std = np.float32(weights_std)
-        self.init_bias_value = np.float32(init_bias_value)
-        self.stride = stride
-        self.nonlinearity = nonlinearity
-        self.dropout = dropout
-        self.partial_sum = partial_sum
-        self.pad = pad
-        self.untie_biases = untie_biases
+        self.n_channels = mirror_layer.n_channels
+        self.n_filters = mirror_layer.n_filters
+        self.filter_size = mirror_layer.filter_size
+        self.weights_std = mirror_layer.weights_std
+        self.init_bias_value = mirror_layer.init_bias_value
+        self.stride = mirror_layer.stride
+        self.nonlinearity = mirror_layer.nonlinearity
+        self.dropout = mirror_layer.dropout
+        self.partial_sum = mirror_layer.partial_sum
+        self.pad = mirror_layer.pad
+        self.untie_biases = mirror_layer.untie_biases
         # if untie_biases == True, each position in the output map has its own bias (as opposed to having the same bias everywhere for a given filter)
         self.mb_size = self.input_layer.mb_size
 
         #self.filter_shape = (self.input_shape[0], filter_size, filter_size, n_filters)
-        self.filter_shape = (n_channels, filter_size, filter_size, n_filters)
+        self.filter_shape = mirror_layer.filter_shape
 
-        self.W = layers.shared_single(4) # theano.shared(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
+        self.W = mirror_layer.W
 
-        if self.untie_biases:
-            self.b = layers.shared_single(3)
-        else:
-            self.b = layers.shared_single(1) # theano.shared(np.ones(n_filters).astype(np.float32) * self.init_bias_value)
+        self.b = mirror_layer.b
 
-        self.params = [self.W, self.b]
+        # self.params = [self.W, self.b]
+        self.params = []
         self.bias_params = [self.b]
-        self.reset_params()
 
         self.image_acts_op = ImageActs(stride=self.stride, partial_sum=self.partial_sum, pad=self.pad)
 
-    def reset_params(self):
-        self.W.set_value(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
-
-        if self.untie_biases:
-            self.b.set_value(np.ones(self.get_output_shape()[:3]).astype(np.float32) * self.init_bias_value)
-        else:
-            self.b.set_value(np.ones(self.n_filters).astype(np.float32) * self.init_bias_value)
-
     def get_output_shape(self):
-        output_width = self.input_shape[1]*self.stride + self.filter_size - self.stride - 2 * self.pad
-        output_height = self.input_shape[2]*self.stride + self.filter_size - self.stride - 2 * self.pad
-        output_shape = (self.n_channels, output_width, output_height, self.mb_size)
+        output_shape = self.mirror_layer.input_layer.get_output_shape()
+        # output_shape = (self.n_channels, output_width, output_height, self.mb_size)
         return output_shape
 
     def output(self, input=None, dropout_active=True, *args, **kwargs):
@@ -171,10 +306,43 @@ class CudaConvnetDeconv2DLayer(object):
 
         contiguous_input = gpu_contiguous(input)
         contiguous_filters = gpu_contiguous(self.W)
-        deconved = self.image_acts_op(contiguous_input, contiguous_filters)
-
+        if self.stride==1:
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters)
+        else:
+            _, x, y, _ = self.get_output_shape()
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable(x, y))
         return self.nonlinearity(deconved)
 
+class ACudaConvnetDeconv2DLayer(CudaConvnetDeconv2DLayer):
+    def __init__(self,
+                 input_layer,
+                 mirror_layer):
+        self.alpha = theano.shared(np.array(0.0, dtype=theano.config.floatX))
+        super(ACudaConvnetDeconv2DLayer, self).__init__(input_layer, mirror_layer)
+
+    def output(self, input=None, dropout_active=True, *args, **kwargs):
+        if input == None:
+            input = self.input_layer.output(dropout_active=dropout_active, *args, **kwargs)
+
+        if self.untie_biases:
+            input -= self.b.dimshuffle(0, 1, 2, 'x')
+        else:
+            input -= self.b.dimshuffle(0, 'x', 'x', 'x')
+
+        if dropout_active and (self.dropout > 0.):
+            retain_prob = 1 - self.dropout
+            mask = layers.srng.binomial(input.shape, p=retain_prob, dtype='int32').astype('float32')
+                # apply the input mask and rescale the input accordingly. By doing this it's no longer necessary to rescale the weights at test time.
+            input = input / retain_prob * mask
+
+        contiguous_input = gpu_contiguous(input)
+        contiguous_filters = gpu_contiguous(self.W)
+        if self.stride==1:
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters)
+        else:
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable(self.shape))
+
+        return self.nonlinearity(deconved, self.alpha)
 
 class CudaConvnetPooling2DLayer(object):
     def __init__(self, input_layer, pool_size, stride=None): # pool_size is an INTEGER here!
@@ -208,6 +376,41 @@ class CudaConvnetPooling2DLayer(object):
         contiguous_input = gpu_contiguous(input)
         return self.pool_op(contiguous_input)
 
+class CudaConvnetUnpooling2DLayer(object):
+#    def __init__(self, input_layer, pool_size, stride=None): # pool_size is an INTEGER here!
+    def __init__(self, input_layer, pooling_layer):
+        """
+        pool_size is an INTEGER, not a tuple. We can only do square pooling windows.
+        
+        if the stride is none, it is taken to be the same as the pool size.
+
+        borders are never ignored.
+        """
+        self.pool_size = pooling_layer.pool_size
+        self.stride = pooling_layer.stride
+        self.input_layer = input_layer
+        self.pooling_layer = pooling_layer
+        self.params = []
+        self.bias_params = []
+        self.mb_size = self.input_layer.mb_size
+
+        self.unpool_op = MaxPoolGrad(ds=self.pool_size, stride=self.stride, start=0)
+
+    def get_output_shape(self):
+        input_shape = self.input_layer.get_output_shape() # convert to list because we cannot assign to a tuple element
+        w, h = input_shape[1], input_shape[2]
+
+        new_w = int(np.ceil(float(w - self.pool_size + self.stride) / self.stride))
+        new_h = int(np.ceil(float(h - self.pool_size + self.stride) / self.stride))
+
+        return (input_shape[0], new_w, new_h, input_shape[3])
+
+    def output(self, *args, **kwargs):
+        input = self.input_layer.output(*args, **kwargs)
+        max_out = self.pooling_layer.output(*args, **kwargs)
+        orig_input = self.pooling_layer.input_layer.output(*args, **kwargs)
+        contiguous_input = gpu_contiguous(input)
+        return self.unpool_op(orig_input, max_out, input)
 
 
 

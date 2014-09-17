@@ -2,13 +2,14 @@ import numpy
 
 from pylearn2.space import Conv2DSpace
 
-import datasets.unsupervised_dataset as unsupervised_dataset
-import model as Model
-import util
+import unsupervised_experiments.datasets.unsupervised_dataset as unsupervised_dataset
+import unsupervised_experiments.model as Model
+import unsupervised_experiments.util
 
 if __name__ == "__main__":
-    model = Model.Model('deconv-stl10_lr01', '/experiments/deconv/stl10')
-    util.load_checkpoint(model, '/experiments/deconv/stl10/deconv-stl10-09m-10d-17h-10m-57s.pkl')
+    model = Model.Model('deconv-stl10-32x64-old', '/experiments/deconv/stl10-32x64')
+    checkpoint = '/experiments/deconv/stl10-32x64/deconv-stl10-32x64-old-09m-13d-13h-48m-26s.pkl'
+    util.load_checkpoint(model, checkpoint)
     monitor = util.Monitor(model)
 
     data = numpy.load('/data/stl10_matlab/unsupervised.npy')

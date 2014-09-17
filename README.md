@@ -5,6 +5,8 @@ This is a code repository to efficiently train a deconvolutional neural network 
 
 This code uses [theano][theano], [pylearn2][pylearn2], [cuda-convnet][ccnet] and is heavily based on Sander Dieleman's [kaggle galaxy repo][galaxy].
 
+It also currently relies on a change to `pylearn2.sandbox.cuda_convnet.pool.py` that defines a `grad` method for the `MaxPoolGrad` class, which can be useful in some cases...
+
 [theano]:https://github.com/Theano/Theano
 [pylearn2]:https://github.com/lisa-lab/pylearn2
 [ccnet]:http://code.google.com/p/cuda-convnet/

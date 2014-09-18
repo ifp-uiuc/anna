@@ -6,9 +6,9 @@ import matplotlib.pyplot as pyplot
 import theano
 import theano.tensor as T  #TODO(tpaine) remove this dependency, can be done by factoring out the cost theano equation
 
-from layers import layers, cc_layers
-import util
-import datasets.unsupervised_dataset as unsupervised_dataset
+from fastor.layers import layers, cc_layers
+from fastor import util
+from fastor.datasets import unsupervised_dataset
 
 theano.config.floatX = 'float32'
 
@@ -118,20 +118,25 @@ class Model(object):
     def prediction(self, batch):
         return self.prediction_func(batch)
 
+print('Start')
 data = numpy.load('/data/stl10_matlab/unsupervised.npy')
 data = numpy.float32(data)
-data = data/255.0*2.0
+data /= 255.0
+data *= 2.0
 train_data = data[0:90000, :, :, :]
 test_data = data[90000::, :, :, :]
+print('Done Loading Data')
 
 train_dataset = unsupervised_dataset.UnsupervisedDataset(train_data)
 test_dataset = unsupervised_dataset.UnsupervisedDataset(test_data)
 test_iterator = test_dataset.iterator(mode='sequential', batch_size=128)
 train_iterator = train_dataset.iterator(mode='random_uniform', batch_size=128, num_batches=100000)
 
+
 model = Model('deconv-stl10-32x64', '/experiments/deconv/stl10-32x64-ortho')
 #util.load_checkpoint(model, checkpoint)
 monitor = util.Monitor(model)
+print('Done Making Monitor')
 # w1 = model.conv1.W.get_value()
 # w2 = model.conv2.W.get_value()
 
@@ -144,6 +149,7 @@ k = 1.05
 # model.conv2.W.set_value(w2)
 # model.deconv3.W.set_value(w2)
 # model.output.W.set_value(w1)
+print('1')
 batch = test_iterator.next()
 batch = batch.transpose(1,2,3,0)
 batch_hat = model.prediction(batch)
@@ -155,6 +161,7 @@ model.conv2.alpha.set_value(alpha)
 model.deconv3.alpha.set_value(alpha)
 model.output.alpha.set_value(alpha)
 
+print('2')
 model.learning_rate_symbol.set_value(0.01)
 count = 1
 for batch in train_iterator:

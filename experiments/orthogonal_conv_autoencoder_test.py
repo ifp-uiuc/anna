@@ -6,9 +6,8 @@ import matplotlib.pyplot as pyplot
 import theano
 import theano.tensor as T  #TODO(tpaine) remove this dependency, can be done by factoring out the cost theano equation
 
-from layers import layers, cc_layers
-
-import datasets.unsupervised_dataset as unsupervised_dataset
+from fastor.layers import layers, cc_layers
+from fastor.datasets import unsupervised_dataset
 
 theano.config.floatX = 'float32'
 
@@ -61,11 +60,7 @@ class Model(object):
                                              filter_size=4,
                                              weights_std=0.01,
                                              init_bias_value=0.0)
-    deconv2 = cc_layers.CudaConvnetDeconv2DLayer(conv1,
-                                                 n_channels=3,
-                                                 filter_size=4,
-                                                 weights_std=0.01,
-                                                 init_bias_value=0.0)
+    deconv2 = cc_layers.CudaConvnetDeconv2DLayer(conv1, conv1)
     
     def __init__(self, name, path):
         self.name = name
@@ -110,14 +105,10 @@ class Model(object):
         return self.prediction_func(batch)
 
 data = numpy.load('/data/stl10_matlab/unsupervised.npy')
-data = numpy.float32(data)
-data = data/255.0*2.0
-test_data = data[90000::, :, :, :]
+batch = numpy.float32(data[0:128, :, :, :])
+batch /= 255.0
+batch *= 2.0
 
-test_dataset = unsupervised_dataset.UnsupervisedDataset(test_data)
-test_iterator = test_dataset.iterator(mode='sequential', batch_size=128)
-
-batch = test_iterator.next()
 batch = batch.transpose(1,2,3,0)
 model = Model('deconv-stl10-96x128', '/experiments/deconv/stl10-96x128')
 w = model.conv1.W.get_value()
@@ -138,4 +129,5 @@ image = get_image(batch, i)
 image_hat = get_image(batch_hat, i)
 pyplot.imshow(numpy.hstack((image, image_hat)))
 pyplot.colorbar()
+
 pyplot.show()

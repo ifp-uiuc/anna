@@ -42,6 +42,10 @@ class Monitor(object):
         self.short_steps = short_steps
         self.long_steps = long_steps
         self.model = model
+
+        # Check if model.path exists, if not create it
+        if model.path and not os.path.exists(model.path):
+            os.makedirs(model.path)
         
     def start(self):
         self.tic = time()
@@ -61,7 +65,8 @@ class Monitor(object):
             self.big_times = []
             if mean_error < self.best:
                 self.best = mean_error
-                save_checkpoint(self.model)
+                if self.model.path:
+                    save_checkpoint(self.model)
         if self.step_number % self.short_steps == 0:
             mean_error = numpy.mean(self.errors)
             mean_time = numpy.mean(self.times)

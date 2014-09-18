@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(prog='launcher', description='Script to launch experiments')
     parser.add_argument('exp_name', help='Name of experiment')
-    parser.add_argument('train_file_path', help='Path to model.py and train.py files')
+    parser.add_argument('train_path', help='Path to model.py and train.py files')
     parser.add_argument('out_path', help='Path to to folder to save results')
     #parser.add_argument('-v', action='store_true', help='Verbose')
     args = parser.parse_args()
@@ -21,12 +21,12 @@ if __name__ == "__main__":
     print('========================================================\n')    
 
     exp_name = args.exp_name
-    train_file_path = args.train_file_path
+    train_path = args.train_path
     out_path = args.out_path
 
     print('===================== Inputs ===========================')
     print('Experiment Name: {}'.format(exp_name))
-    print('Train File Path: {}'.format(train_file_path))
+    print('Path to train.py and model.py: {}'.format(train_path))
     print('Out Folder Path: {}'.format(out_path))
     print('========================================================\n')
 
@@ -37,18 +37,19 @@ if __name__ == "__main__":
         os.makedirs(out_path)
 
     # Copy model.py and train.py to out_file_path location
-    model_file = os.path.join(train_file_path, 'model.py')
-    train_file = os.path.join(train_file_path, 'train.py')
+    model_file_path = os.path.join(train_path, 'model.py')
+    train_file_path = os.path.join(train_path, 'train.py')
 
-    if not os.path.exists(model_file):
+    if not os.path.exists(model_file_path):
         print('Model File Does Not Exist!')
         sys.exit(0)
-    elif not os.path.exists(train_file):
+    elif not os.path.exists(train_file_path):
         print('Train File Does Not Exist!')
         sys.exit(0)
 
-    shutil.copy(model_file, os.path.join(out_path, model_file))
-    shutil.copy(train_file, os.path.join(out_path, train_file))
+    shutil.copy(model_file_path, os.path.join(out_path, 'model.py'))
+    shutil.copy(train_file_path, os.path.join(out_path, 'train.py'))
+
 
     print('=================== Launch Process =======================')
 

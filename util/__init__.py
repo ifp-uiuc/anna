@@ -23,7 +23,8 @@ def save_checkpoint(model):
     tt = datetime.now()
     time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')
     checkpoint_name = '%s-%s.pkl' % (model.name, time_string)
-    checkpoint_path = os.path.join(model.path, checkpoint_name)
+    print(model.path)
+    checkpoint_path = os.path.join(model.path, 'checkpoints', checkpoint_name)
 
     print 'Saving model checkpoint to: %s' % checkpoint_path
     f = open(checkpoint_path, 'wb')
@@ -43,9 +44,10 @@ class Monitor(object):
         self.long_steps = long_steps
         self.model = model
 
-        # Check if model.path exists, if not create it
-        if model.path and not os.path.exists(model.path):
-            os.makedirs(model.path)
+        # Check if model.path exists, if not create it (with a checkpoint folder)
+        if model.path and not os.path.exists(os.path.join(model.path, 'checkpoints')):
+            os.makedirs(os.path.join(model.path, 'checkpoints'))            
+
         
     def start(self):
         self.tic = time()

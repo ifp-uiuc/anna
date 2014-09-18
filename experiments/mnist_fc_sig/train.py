@@ -13,7 +13,7 @@ monitor = util.Monitor(model)
 
 print 'Loading dataset...'
 train_dataset = mnist.MNIST('train')
-train_iterator = train_dataset.iterator(mode='random_uniform', batch_size=128, num_batches=100000)
+train_iterator = train_dataset.iterator(mode='random_uniform', batch_size=128, num_batches=1000000)
 
 print 'Start training...'
 for batch in train_iterator:

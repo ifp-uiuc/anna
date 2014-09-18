@@ -2,19 +2,19 @@ import numpy
 
 from pylearn2.space import Conv2DSpace
 
-import unsupervised_experiments.datasets.unsupervised_dataset as unsupervised_dataset
-import unsupervised_experiments.model as Model
-import unsupervised_experiments.util
+from fastor.datasets import unsupervised_dataset
+from fastor import util
+from model import Model
+
 
 if __name__ == "__main__":
-    model = Model.Model('deconv-stl10-32x64-old', '/experiments/deconv/stl10-32x64')
-    checkpoint = '/experiments/deconv/stl10-32x64/deconv-stl10-32x64-old-09m-13d-13h-48m-26s.pkl'
-    util.load_checkpoint(model, checkpoint)
+    model = Model('deconv-stl10-32x64-old', '/experiments/deconv/stl10-32x64')
     monitor = util.Monitor(model)
 
     data = numpy.load('/data/stl10_matlab/unsupervised.npy')
     data = numpy.float32(data)
-    data = data/255.0*2.0
+    data /= 255.0
+    data *= 2.0
     train_data = data[0:90000, :, :, :]
     test_data = data[90000::, :, :, :]
 

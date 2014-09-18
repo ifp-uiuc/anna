@@ -3,22 +3,23 @@ import Image
 
 import numpy
 
-import datasets.unsupervised_dataset as unsupervised_dataset
-import model as Model
-import util
+from fastor.datasets import unsupervised_dataset
+from fastor import util
+from model import Model
 
 def rescale(data):
     data = data/2.0*255.0
     data[data > 255.0] = 255.0
     return data
 
-model = Model.Model('deconv-stl10_lr01', '/experiments/deconv/stl10')
-util.load_checkpoint(model, '/experiments/deconv/stl10/deconv-stl10_lr01-09m-11d-10h-51m-31s.pkl')
+model = Model('deconv-stl10_lr01', '/experiments/deconv/stl10')
+#util.load_checkpoint(model, '/experiments/deconv/stl10/deconv-stl10_lr01-09m-11d-10h-51m-31s.pkl')
 
 
 data = numpy.load('/data/stl10_matlab/unsupervised.npy')
 data = numpy.float32(data)
-data = data/255.0*2.0
+data /= 255.0
+data *= 2.0
 test_data = data[90000::, :, :, :]
 
 test_dataset = unsupervised_dataset.UnsupervisedDataset(test_data)

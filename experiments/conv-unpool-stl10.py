@@ -2,13 +2,13 @@ import numpy
 import matplotlib.pyplot as pyplot
 
 import theano
+import theano.tensor as T
 
 from pylearn2.space import Conv2DSpace
 
-import unsupervised_experiments.datasets.unsupervised_dataset as unsupervised_dataset
-
-from unsupervised_experiments.layers import layers, cc_layers
-import unsupervised_experiments.util
+from fastor.datasets import unsupervised_dataset
+from fastor.layers import layers, cc_layers
+from fastor import util
 
 theano.config.floatX = 'float32'
 
@@ -54,15 +54,6 @@ def conv_orthogonalize(w, k=1.05):
     w =  w.reshape(channels, width, height, filters)
     w = numpy.float32(w)
     return w
-
-import numpy
-
-import theano
-import theano.tensor as T  #TODO(tpaine) remove this dependency, can be done by factoring out the cost theano equation
-
-from layers import layers, cc_layers
-
-theano.config.floatX = 'float32'
 
 class Model(object):
     input = cc_layers.CudaConvnetInput2DLayer(128, 3, 96, 96)
@@ -123,7 +114,8 @@ monitor = util.Monitor(model)
 
 data = numpy.load('/data/stl10_matlab/unsupervised.npy')
 data = numpy.float32(data)
-data = data/255.0*2.0
+data /= 255.0
+data *= 2.0
 train_data = data[0:90000, :, :, :]
 test_data = data[90000::, :, :, :]
 

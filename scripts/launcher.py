@@ -56,10 +56,11 @@ if __name__ == "__main__":
     # Launch Process
     log_file = os.path.join(out_path, 'log.txt')
     f_log = open(log_file, 'wb')
-    run_str = 'python {0} {1} {2} '.format(os.path.join(out_path, 'train.py'), exp_name, out_path)        
+    run_str = 'python -u {0} {1} {2} '.format(os.path.join(out_path, 'train.py'), exp_name, out_path)        
     run_list = run_str.split()
     print('Running: {}'.format(run_str))
     child_proc = subprocess.Popen(run_list, stdout=f_log, stderr=f_log)
+    f_log.close()
     PID = child_proc.pid
     print('Process Launched with PID: {}'.format(PID))
     print('Process Log written to: {}'.format(log_file))

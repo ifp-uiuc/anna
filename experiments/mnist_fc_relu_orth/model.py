@@ -4,25 +4,10 @@ import matplotlib.pyplot as pyplot
 import theano
 import theano.tensor as T  #TODO(tpaine) remove this dependency, can be done by factoring out the cost theano equation
 
-import pylearn2.datasets.mnist as mnist
-
 from fastor.layers import layers, cc_layers
 from fastor import util
 
 theano.config.floatX = 'float32'
-
-def orthogonalize(w):
-    # Orthogonalize square matrices.
-    # Or left orthogonalize overcomplete matrices.
-    # Simply gets an SVD decomposition, and sets the singular values to ones.
-    dim2, dim1 = w.shape
-    u, s, v = numpy.linalg.svd(w)
-    S = numpy.zeros((dim2,dim1))
-    s = s/s
-    S[:dim2,:dim2] = numpy.diag(s)
-    w = numpy.dot(u,numpy.dot(S,v))
-    w = numpy.float32(w)
-    return w
 
 class Model(object):
     input = layers.FlatInputLayer(128, 28*28)
@@ -109,37 +94,4 @@ class Model(object):
 
     def prediction(self, batch):
         return self.prediction_func(batch)
-
-print 'Creating model...'
-model = Model('ortho-train','/experiments/results/mnist-dense-orthogonal')
-monitor = util.Monitor(model)
-
-train_dataset = mnist.MNIST('train')
-train_iterator = train_dataset.iterator(mode='random_uniform', batch_size=128, num_batches=1000)
-batch = train_iterator.next()
-
-# Orthogonalize weights
-print 'Orthogonalizing weights...'
-w1 = orthogonalize(model.layer1.W.get_value())
-model.layer1.W.set_value(w1)
-w2 = orthogonalize(model.layer2.W.get_value())
-model.layer2.W.set_value(w2)
-w3 = orthogonalize(model.layer3.W.get_value())
-model.layer3.W.set_value(w3)
-w4 = orthogonalize(model.layer4.W.get_value())
-model.layer4.W.set_value(w4)
-model.layer5.W.set_value(w4.T)
-model.layer6.W.set_value(w3.T)
-model.layer7.W.set_value(w2.T)
-model.layer8.W.set_value(w1.T)
-
-print model.eval(batch)
-model.learning_rate_symbol.set_value(0.001)
-
-print 'Start training layer1'
-train_iterator = train_dataset.iterator(mode='random_uniform', batch_size=128, num_batches=100000)
-for batch in train_iterator:
-        monitor.start()
-        error = model.train(batch)
-        monitor.stop(error)
         

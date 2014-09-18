@@ -107,9 +107,6 @@ def reset_all_params(layer):
         if hasattr(l, 'reset_params'):
             l.reset_params()
 
-
-    
-
 def gen_updates_regular_momentum(loss, all_parameters, learning_rate, momentum, weight_decay):
     all_grads = [theano.grad(loss, param) for param in all_parameters]
     updates = []
@@ -119,7 +116,6 @@ def gen_updates_regular_momentum(loss, all_parameters, learning_rate, momentum, 
         updates.append((mparam_i, v))
         updates.append((param_i, param_i + v))
     return updates
-
 
 # using the alternative formulation of nesterov momentum described at https://github.com/lisa-lab/pylearn2/pull/136
 # such that the gradient can be evaluated at the current parameters.
@@ -135,7 +131,6 @@ def gen_updates_nesterov_momentum(loss, all_parameters, learning_rate, momentum,
         updates.append((mparam_i, v))
         updates.append((param_i, w))
     return updates
-
 
 def gen_updates_nesterov_momentum_no_bias_decay(loss, all_parameters, all_bias_parameters, learning_rate, momentum, weight_decay):
     """
@@ -158,15 +153,12 @@ def gen_updates_nesterov_momentum_no_bias_decay(loss, all_parameters, all_bias_p
 
 gen_updates = gen_updates_nesterov_momentum
 
-
 def gen_updates_sgd(loss, all_parameters, learning_rate):
     all_grads = [theano.grad(loss, param) for param in all_parameters]
     updates = []
     for param_i, grad_i in zip(all_parameters, all_grads):
         updates.append((param_i, param_i - learning_rate * grad_i))
     return updates
-
-
 
 def gen_updates_adagrad(loss, all_parameters, learning_rate=1.0, epsilon=1e-6):
     """
@@ -184,7 +176,6 @@ def gen_updates_adagrad(loss, all_parameters, learning_rate=1.0, epsilon=1e-6):
         updates.append((param_i, param_i - learning_rate * grad_i / T.sqrt(acc_i_new + epsilon)))
 
     return updates
-
 
 def gen_updates_rmsprop(loss, all_parameters, learning_rate=1.0, rho=0.9, epsilon=1e-6):
     """
@@ -205,7 +196,6 @@ def gen_updates_rmsprop(loss, all_parameters, learning_rate=1.0, rho=0.9, epsilo
         updates.append((param_i, param_i - learning_rate * grad_i / T.sqrt(acc_i_new + epsilon)))
 
     return updates
-
 
 def gen_updates_adadelta(loss, all_parameters, learning_rate=1.0, rho=0.95, epsilon=1e-6):
     """
@@ -236,16 +226,12 @@ def gen_updates_adadelta(loss, all_parameters, learning_rate=1.0, rho=0.95, epsi
 
     return updates    
 
-
-
 def shared_single(dim=2):
     """
     Shortcut to create an undefined single precision Theano shared variable.
     """
     shp = tuple([1] * dim)
     return theano.shared(np.zeros(shp, dtype='float32'))
-
-
 
 class InputLayer(object):
     def __init__(self, mb_size, n_features, length):

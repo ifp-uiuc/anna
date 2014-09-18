@@ -1,4 +1,5 @@
 import sys
+import numpy
 
 import pylearn2.datasets.mnist as mnist
 

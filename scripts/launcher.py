@@ -10,6 +10,7 @@ import sys
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(prog='launcher', description='Script to launch experiments')
+    parser.add_argument('gpu', help='Integer for gpu')
     parser.add_argument('exp_name', help='Name of experiment')
     parser.add_argument('train_path', help='Path to model.py and train.py files')
     parser.add_argument('out_path', help='Path to to folder to save results')
@@ -23,6 +24,10 @@ if __name__ == "__main__":
     exp_name = args.exp_name
     train_path = args.train_path
     out_path = args.out_path
+    gpu = args.gpu
+
+    my_env = os.environ
+    my_env['THEANO_FLAGS']='floatX=float32,device=gpu{0},nvcc.fastmath=True'.format(gpu)
 
     print('===================== Inputs ===========================')
     print('Experiment Name: {}'.format(exp_name))
@@ -56,10 +61,11 @@ if __name__ == "__main__":
     # Launch Process
     log_file = os.path.join(out_path, 'log.txt')
     f_log = open(log_file, 'wb')
-    run_str = 'python -u {0} {1} {2} '.format(os.path.join(out_path, 'train.py'), exp_name, out_path)        
+    run_str = "python -u {0} {1} {2}".format(os.path.join(out_path, 'train.py'), exp_name, out_path)        
     run_list = run_str.split()
+    print run_list
     print('Running: {}'.format(run_str))
-    child_proc = subprocess.Popen(run_list, stdout=f_log, stderr=f_log)
+    child_proc = subprocess.Popen(run_list, stdout=f_log, stderr=f_log, env=my_env)
     f_log.close()
     PID = child_proc.pid
     print('Process Launched with PID: {}'.format(PID))

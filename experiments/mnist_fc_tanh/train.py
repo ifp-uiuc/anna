@@ -18,5 +18,5 @@ train_iterator = train_dataset.iterator(mode='random_uniform', batch_size=128, n
 print 'Start training...'
 for batch in train_iterator:
         monitor.start()
-        error = model.train(batch)
+        error = model.train(batch*2-1)
         monitor.stop(error)

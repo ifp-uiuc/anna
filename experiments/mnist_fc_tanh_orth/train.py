@@ -47,5 +47,5 @@ model.layer8.W.set_value(w1.T)
 print 'Start training...'
 for batch in train_iterator:
         monitor.start()
-        error = model.train(batch)
+        error = model.train(batch*2-1)
         monitor.stop(error)

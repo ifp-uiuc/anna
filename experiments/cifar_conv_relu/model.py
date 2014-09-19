@@ -8,19 +8,25 @@ from fastor.layers import layers, cc_layers
 theano.config.floatX = 'float32'
 
 class Model(object):
-    input = cc_layers.CudaConvnetInput2DLayer(128, 3, 96, 96)
-    conv1 = cc_layers.ACudaConvnetConv2DLayer(input, 
+    input = cc_layers.CudaConvnetInput2DLayer(128, 3, 96, 96)    
+    winit = 0.01
+    binit = 0.0
+    nonlinearity = layers.rectify
+    
+    conv1 = cc_layers.CudaConvnetConv2DLayer(input, 
                                              n_filters=32,
                                              filter_size=3,
-                                             weights_std=0.01,
-                                             init_bias_value=0.0)
-    conv2 = cc_layers.ACudaConvnetConv2DLayer(conv1,
+                                             weights_std=winit,
+                                             init_bias_value=binit,
+                                             nonlinearity=nonlinearity)
+    conv2 = cc_layers.CudaConvnetConv2DLayer(conv1,
                                              n_filters=64,
                                              filter_size=3,
-                                             weights_std=0.01,
-                                             init_bias_value=0.0)
-    deconv3 = cc_layers.ACudaConvnetDeconv2DLayer(conv2, conv2)
-    output = cc_layers.ACudaConvnetDeconv2DLayer(deconv3, conv1)
+                                             weights_std=winit,
+                                             init_bias_value=binit,
+                                             nonlinearity=nonlinearity)
+    deconv3 = cc_layers.CudaConvnetDeconv2DLayer(conv2, conv2)
+    output = cc_layers.CudaConvnetDeconv2DLayer(deconv3, conv1)
     
     def __init__(self, name, path):
         self.name = name

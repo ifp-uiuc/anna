@@ -51,7 +51,7 @@ model = Model(sys.argv[1], sys.argv[2])
 monitor = util.Monitor(model)
 
 print('Loading Data')
-train_iterator = get_cifar_iterator('train', 
+train_iterator = util.get_cifar_iterator('train', 
                                     mode='random_uniform', 
                                     batch_size=128, 
                                     num_batches=100000,                                     

@@ -1,3 +1,5 @@
+import sys
+
 import numpy
 from fastor import util
 

@@ -80,7 +80,9 @@ class Model(object):
     def _get_cost_symbol(self):
         input = self._get_input_symbol()
         output = self._get_output_symbol()
-        cost = T.sum((output - input) ** 2)/128
+        # tanh requires that the values be from [-1,1]
+        # Scaling to match sigmoid and relu cases
+        cost = T.sum(((output - input + 1) / 2.0) ** 2)/128        
         return cost
 
     def _get_output_layer(self):

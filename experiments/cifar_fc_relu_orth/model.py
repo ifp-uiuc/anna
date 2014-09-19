@@ -10,7 +10,7 @@ from fastor import util
 theano.config.floatX = 'float32'
 
 class Model(object):
-    input = layers.FlatInputLayer(128, 3*32*32)
+    input = layers.FlatInputLayer(64, 3*32*32)
     layer1 = layers.DenseLayer(input,
                                n_outputs=4000,
                                weights_std=0.01,
@@ -57,7 +57,7 @@ class Model(object):
         self.path = path
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
     
-        self.learning_rate_symbol = theano.shared(numpy.array(0.00005, dtype=theano.config.floatX))
+        self.learning_rate_symbol = theano.shared(numpy.array(0.0001, dtype=theano.config.floatX))
         self.updates_symbol = layers.gen_updates_regular_momentum(self._get_cost_symbol(),
                                                                   self.all_parameters_symbol,
                                                                   learning_rate=self.learning_rate_symbol,
@@ -80,7 +80,7 @@ class Model(object):
     def _get_cost_symbol(self):
         input = self._get_input_symbol()
         output = self._get_output_symbol()
-        cost = T.sum((output - input) ** 2)/128
+        cost = T.sum((output - input) ** 2)/64
         return cost
 
     def _get_output_layer(self):

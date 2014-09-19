@@ -57,7 +57,7 @@ class Model(object):
         self.path = path
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
     
-        self.learning_rate_symbol = theano.shared(numpy.array(0.01, dtype=theano.config.floatX))
+        self.learning_rate_symbol = theano.shared(numpy.array(0.00005, dtype=theano.config.floatX))
         self.updates_symbol = layers.gen_updates_regular_momentum(self._get_cost_symbol(),
                                                                   self.all_parameters_symbol,
                                                                   learning_rate=self.learning_rate_symbol,

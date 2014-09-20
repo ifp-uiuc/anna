@@ -25,6 +25,8 @@ if __name__ == "__main__":
     train_path = args.train_path
     out_path = args.out_path
     gpu = args.gpu
+    train_path = os.path.join(train_path, exp_name)
+    out_path = os.path.join(out_path, exp_name)
 
     my_env = os.environ
     my_env['THEANO_FLAGS']='floatX=float32,device=gpu{0},nvcc.fastmath=True'.format(gpu)
@@ -37,11 +39,10 @@ if __name__ == "__main__":
 
     # Modify output directory to include experiment name in path
     # Check if output directory exists, if not create it
-    out_path = os.path.join(out_path, exp_name)
     if not os.path.exists(out_path):
         os.makedirs(out_path)
 
-    # Copy model.py and train.py to out_file_path location
+    # Copy model.py and train.py to out_file_path location    
     model_file_path = os.path.join(train_path, 'model.py')
     train_file_path = os.path.join(train_path, 'train.py')
 

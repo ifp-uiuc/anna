@@ -10,8 +10,10 @@ theano.config.floatX = 'float32'
 class Model(object):
     batch = 128
     input = cc_layers.CudaConvnetInput2DLayer(batch, 3, 32, 32)    
-    winit1 = 0.05
-    winit2 = 0.2
+    k = float(numpy.random.rand()*4.5 + 0.5)
+    print '## k = %.3f' % k
+    winit1 = k/numpy.sqrt(3*3*3)
+    winit2 = k/numpy.sqrt(3*3*32)
     binit = 0.5
     nonlinearity = layers.tanh
     

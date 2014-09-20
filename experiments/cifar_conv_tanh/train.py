@@ -20,5 +20,5 @@ train_iterator = util.get_cifar_iterator('train',
 print('Trainig Model')
 for batch in train_iterator:    
     monitor.start()
-    error = model.train(batch/2)
+    error = model.train(batch-1)
     monitor.stop(error)    

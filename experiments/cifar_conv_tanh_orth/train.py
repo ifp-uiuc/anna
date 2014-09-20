@@ -70,5 +70,5 @@ model.conv2.W.set_value(w2)
 print('Trainig Model')
 for batch in train_iterator:    
     monitor.start()
-    error = model.train(batch/2)
+    error = model.train(batch-1)
     monitor.stop(error)    

@@ -9,7 +9,7 @@ theano.config.floatX = 'float32'
 
 class Model(object):
     batch = 128
-    input = cc_layers.CudaConvnetInput2DLayer(batch, 3, 96, 96)    
+    input = cc_layers.CudaConvnetInput2DLayer(batch, 3, 32, 32)    
     winit = 0.01
     binit = 0.0
     nonlinearity = layers.rectify

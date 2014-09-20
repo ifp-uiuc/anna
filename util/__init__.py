@@ -7,6 +7,8 @@ from datetime import datetime
 import cPickle
 
 from pylearn2.space import Conv2DSpace
+from pylearn2.datasets import cifar10
+
 
 def load_checkpoint(model, checkpoint_path):
     all_parameters = model.all_parameters_symbol

@@ -8,7 +8,8 @@ from fastor.layers import layers, cc_layers
 theano.config.floatX = 'float32'
 
 class Model(object):
-    input = cc_layers.CudaConvnetInput2DLayer(128, 3, 96, 96)    
+    batch = 128
+    input = cc_layers.CudaConvnetInput2DLayer(batch, 3, 96, 96)    
     winit = 0.01
     binit = 0.0
     nonlinearity = layers.rectify
@@ -34,7 +35,7 @@ class Model(object):
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
     
         # can switch to gen_updates_regular_momentum
-        self.learning_rate_symbol = theano.shared(numpy.array(0.01, dtype=theano.config.floatX))
+        self.learning_rate_symbol = theano.shared(numpy.array(0.000001, dtype=theano.config.floatX))
         # self.updates_symbol = layers.gen_updates_sgd(self._get_cost_symbol(),
         #                                             self.all_parameters_symbol,
         #                                             learning_rate=self.learning_rate_symbol)
@@ -61,7 +62,7 @@ class Model(object):
     def _get_cost_symbol(self):
         input = self._get_input_symbol()
         output = self._get_output_symbol()
-        cost = T.mean((output - input) ** 2)
+        cost = T.sum((output - input) ** 2)/self.batch
         return cost
 
     def _get_output_layer(self):

@@ -39,7 +39,7 @@ class Monitor(object):
     big_errors = []
     big_times = []
 
-    def __init__(self, model, step_number=0, best=1e6, short_steps=10, long_steps=50):
+    def __init__(self, model, step_number=0, best=1, short_steps=10, long_steps=50):
         self.step_number = step_number
         self.best = best
         self.short_steps = short_steps

@@ -10,7 +10,8 @@ theano.config.floatX = 'float32'
 class Model(object):
     batch = 128
     input = cc_layers.CudaConvnetInput2DLayer(batch, 3, 32, 32)    
-    k = float(numpy.random.rand()*4.5 + 0.5)
+    #k = float(numpy.random.rand()*4.5 + 0.5)
+    k = 0.5
     print '## k = %.3f' % k
     winit1 = k/numpy.sqrt(3*3*3)
     winit2 = k/numpy.sqrt(3*3*32)
@@ -38,7 +39,7 @@ class Model(object):
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
     
         # can switch to gen_updates_regular_momentum
-        self.learning_rate_symbol = theano.shared(numpy.array(0.000001, dtype=theano.config.floatX))
+        self.learning_rate_symbol = theano.shared(numpy.array(0.0000001, dtype=theano.config.floatX))
         # self.updates_symbol = layers.gen_updates_sgd(self._get_cost_symbol(),
         #                                             self.all_parameters_symbol,
         #                                             learning_rate=self.learning_rate_symbol)

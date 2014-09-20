@@ -10,20 +10,21 @@ theano.config.floatX = 'float32'
 class Model(object):
     batch = 128
     input = cc_layers.CudaConvnetInput2DLayer(batch, 3, 32, 32)    
-    winit = 0.005
+    winit1 = 0.05
+    winit2 = 0.2
     binit = 0.5
     nonlinearity = layers.tanh
     
     conv1 = cc_layers.CudaConvnetConv2DLayer(input, 
                                              n_filters=32,
                                              filter_size=3,
-                                             weights_std=winit,
+                                             weights_std=winit1,
                                              init_bias_value=binit,
                                              nonlinearity=nonlinearity)
     conv2 = cc_layers.CudaConvnetConv2DLayer(conv1,
                                              n_filters=64,
                                              filter_size=3,
-                                             weights_std=winit,
+                                             weights_std=winit2,
                                              init_bias_value=binit,
                                              nonlinearity=nonlinearity)
     deconv3 = cc_layers.CudaConvnetDeconv2DLayer(conv2, conv2)

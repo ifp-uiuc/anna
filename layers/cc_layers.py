@@ -397,19 +397,20 @@ class CudaConvnetUnpooling2DLayer(object):
         self.unpool_op = MaxPoolGrad(ds=self.pool_size, stride=self.stride, start=0)
 
     def get_output_shape(self):
-        input_shape = self.input_layer.get_output_shape() # convert to list because we cannot assign to a tuple element
-        w, h = input_shape[1], input_shape[2]
+        shape = self.pooling_layer.input_layer.get_output_shape()
+        #input_shape = self.input_layer.get_output_shape() # convert to list because we cannot assign to a tuple element
+        #w, h = input_shape[1], input_shape[2]
 
-        new_w = int(np.ceil(float(w - self.pool_size + self.stride) / self.stride))
-        new_h = int(np.ceil(float(h - self.pool_size + self.stride) / self.stride))
+        #new_w = int(np.ceil(float(w - self.pool_size + self.stride) / self.stride))
+        #new_h = int(np.ceil(float(h - self.pool_size + self.stride) / self.stride))
 
-        return (input_shape[0], new_w, new_h, input_shape[3])
+        #return (input_shape[0], new_w, new_h, input_shape[3])
+        return shape
 
     def output(self, *args, **kwargs):
-        input = self.input_layer.output(*args, **kwargs)
-        max_out = self.pooling_layer.output(*args, **kwargs)
-        orig_input = self.pooling_layer.input_layer.output(*args, **kwargs)
-        contiguous_input = gpu_contiguous(input)
+        input = self.input_layer.output()
+        max_out = self.pooling_layer.output()
+        orig_input = self.pooling_layer.input_layer.output()
         return self.unpool_op(orig_input, max_out, input)
 
 

@@ -30,6 +30,9 @@ def identity(x):
     # To create a linear layer.
     return x
 
+def softmax(x):
+    return T.nnet.softmax(x)
+
 def compress(x, C=10000.0):
     return T.log(1 + C * x ** 2) # no binning matrix here of course
 
@@ -264,7 +267,6 @@ class FlatInputLayer(InputLayer):
         return theano variable
         """
         return self.input_var
-
 
 class Input2DLayer(object):
     def __init__(self, mb_size, n_features, width, height):
@@ -963,7 +965,21 @@ class FlattenLayer(object):
         input = self.input_layer.output(*args, **kwargs)
         return input.reshape(self.get_output_shape())
 
+class FlattenLayer2(object):
+    def __init__(self, input_layer):
+        self.input_layer = input_layer
+        self.params = []
+        self.bias_params = []
+        self.mb_size = self.input_layer.mb_size
 
+    def get_output_shape(self):
+        input_shape = self.input_layer.get_output_shape()
+        size = int(np.prod(input_shape[0:-1]))
+        return (self.mb_size, size)
+
+    def output(self, *args, **kwargs):
+        input = self.input_layer.output(*args, **kwargs)
+        return input.reshape(self.get_output_shape())
 
 
 class ConcatenateLayer(object):

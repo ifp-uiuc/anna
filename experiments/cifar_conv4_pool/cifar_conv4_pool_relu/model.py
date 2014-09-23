@@ -26,7 +26,7 @@ class Model(object):
                                              weights_std=winit1,
                                              init_bias_value=binit,
                                              nonlinearity=nonlinearity,
-                                             pad=0)
+                                             pad=1)
     pool1 = cc_layers.CudaConvnetPooling2DLayer(conv1, 2, stride=2)
     conv2 = cc_layers.CudaConvnetConv2DLayer(pool1,
                                              n_filters=64,
@@ -34,23 +34,23 @@ class Model(object):
                                              weights_std=winit2,
                                              init_bias_value=binit,
                                              nonlinearity=nonlinearity,
-                                             pad=0)
+                                             pad=1)
     pool2 = cc_layers.CudaConvnetPooling2DLayer(conv2, 2, stride=2)
     conv3 = cc_layers.CudaConvnetConv2DLayer(pool2,
                                              n_filters=128,
                                              filter_size=3,
-                                             weights_std=winit2,
+                                             weights_std=winit3,
                                              init_bias_value=binit,
                                              nonlinearity=nonlinearity,
-                                             pad=0)
+                                             pad=1)
     pool3 = cc_layers.CudaConvnetPooling2DLayer(conv3, 2, stride=2)
     conv4 = cc_layers.CudaConvnetConv2DLayer(pool3,
                                              n_filters=128,
                                              filter_size=3,
-                                             weights_std=winit2,
+                                             weights_std=winit4,
                                              init_bias_value=binit,
                                              nonlinearity=nonlinearity,
-                                             pad=0)
+                                             pad=1)
     deconv5 = cc_layers.CudaConvnetDeconv2DLayer(conv4, conv4)
     unpool5 = cc_layers.CudaConvnetUnpooling2DLayer(deconv5, pool3)
     deconv6 = cc_layers.CudaConvnetDeconv2DLayer(unpool5, conv3)

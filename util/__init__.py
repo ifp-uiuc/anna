@@ -1,11 +1,12 @@
 """Utils for training neural networks.
 """
 import os
-import numpy
+import Image
 from time import time
 from datetime import datetime
 import cPickle
 
+import numpy
 from pylearn2.space import Conv2DSpace
 from pylearn2.datasets import cifar10
 
@@ -33,17 +34,62 @@ def save_checkpoint(model):
     cPickle.dump(checkpoint, f)
     f.close()
 
+def rescale(data):
+    data = data/2.0*255.0
+    data[data > 255.0] = 255.0
+    return data
+
+class ReconVisualizer(object):
+    def __init__(self, model, batch, steps=2000):
+        self.model = model
+        self.batch = batch
+        self.count = 0
+        self.steps = steps
+        self.save_path = os.path.join(self.model.path, 'recon')
+        
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
+    
+    def run(self):
+        if self.count % self.steps == 0:
+            self._save()
+        self.count += 1
+    
+    def _save(self):
+        tt = datetime.now()
+        time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')
+        sub_path = os.path.join(self.save_path, time_string)
+        
+        if not os.path.exists(sub_path):
+            os.makedirs(sub_path)
+        
+        prediction = self.model.prediction(self.batch)
+        for i in range(128):
+            image = self.batch[:, :, :, i]
+            image = image.transpose(1, 2, 0)
+
+            recon = numpy.array(prediction[:, :, :, i])
+            recon = recon.transpose(1, 2, 0)
+
+            image_array = numpy.uint8(rescale(numpy.hstack((image, recon))))
+
+            to_save = Image.fromarray(image_array)
+            filename = 'recon-%02d.jpeg' % i
+            filepath = os.path.join(sub_path, filename)
+            to_save.save(filepath)
+
 class Monitor(object):
     errors = []
     times = []
     big_errors = []
     big_times = []
 
-    def __init__(self, model, step_number=0, best=1, short_steps=10, long_steps=50):
+    def __init__(self, model, step_number=0, best=1, short_steps=10, long_steps=50, save_steps=2000):
         self.step_number = step_number
         self.best = best
         self.short_steps = short_steps
         self.long_steps = long_steps
+        self.save_steps = save_steps
         self.model = model
 
         # Check if model.path exists, if not create it (with a checkpoint folder)
@@ -61,16 +107,14 @@ class Monitor(object):
         self.times.append(_time)
         self.big_errors.append(error)
         self.big_times.append(_time)
+        if self.step_number % self.save_steps == 0:
+            save_checkpoint(self.model)
         if self.step_number % self.long_steps == 0:
             mean_error = numpy.mean(self.big_errors)
             mean_time = numpy.mean(self.big_times)
             print '*%d, train error: %.5f, time: %.2f' % (self.step_number, mean_error, mean_time)
             self.big_errors = []
             self.big_times = []
-            if mean_error < self.best:
-                self.best = mean_error
-                if self.model.path:
-                    save_checkpoint(self.model)
         if self.step_number % self.short_steps == 0:
             mean_error = numpy.mean(self.errors)
             mean_time = numpy.mean(self.times)

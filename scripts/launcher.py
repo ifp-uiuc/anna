@@ -45,6 +45,8 @@ if __name__ == "__main__":
     # Copy model.py and train.py to out_file_path location    
     model_file_path = os.path.join(train_path, 'model.py')
     train_file_path = os.path.join(train_path, 'train.py')
+    scratch_file_path = os.path.join(train_path, 'train_scratch.py')
+    finetune_file_path = os.path.join(train_path, 'train_finetune.py')
 
     if not os.path.exists(model_file_path):
         print('Model File Does Not Exist!')
@@ -52,10 +54,17 @@ if __name__ == "__main__":
     elif not os.path.exists(train_file_path):
         print('Train File Does Not Exist!')
         sys.exit(0)
+    elif not os.path.exists(scratch_file_path):
+        print('Scratch File Does Not Exist!')
+        sys.exit(0)
+    elif not os.path.exists(finetune_file_path):
+        print('Finetuning File Does Not Exist!')
+        sys.exit(0)
 
     shutil.copy(model_file_path, os.path.join(out_path, 'model.py'))
     shutil.copy(train_file_path, os.path.join(out_path, 'train.py'))
-
+    shutil.copy(model_file_path, os.path.join(out_path, 'train_scratch.py'))
+    shutil.copy(train_file_path, os.path.join(out_path, 'train_finetune.py'))
 
     print('=================== Launch Process =======================')
 

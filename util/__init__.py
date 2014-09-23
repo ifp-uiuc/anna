@@ -84,13 +84,15 @@ class Monitor(object):
     big_errors = []
     big_times = []
 
-    def __init__(self, model, step_number=0, best=1, short_steps=10, long_steps=50, save_steps=2000):
+    def __init__(self, model, step_number=0, best=1, short_steps=10, long_steps=50, save_steps=2000, test_steps=50):
         self.step_number = step_number
         self.best = best
         self.short_steps = short_steps
         self.long_steps = long_steps
         self.save_steps = save_steps
         self.model = model
+        self.test = False
+        self.test_steps = test_steps
 
         # Check if model.path exists, if not create it (with a checkpoint folder)
         if model.path and not os.path.exists(os.path.join(model.path, 'checkpoints')):
@@ -100,6 +102,12 @@ class Monitor(object):
     def start(self):
         self.tic = time()
     
+    def stop_test(self, error):
+        if self.test:
+            self.toc = time()
+            _time = self.toc - self.tic
+            print '&%d, test error: %.5f, time: %.2f' % (self.step_number, error, _time)
+
     def stop(self, error):
         self.toc = time()
         _time = self.toc-self.tic
@@ -107,6 +115,10 @@ class Monitor(object):
         self.times.append(_time)
         self.big_errors.append(error)
         self.big_times.append(_time)
+        if self.step_number % self.test_steps == 0:
+            self.test = True
+        else:
+            self.test = False
         if self.step_number % self.save_steps == 0:
             save_checkpoint(self.model)
         if self.step_number % self.long_steps == 0:

@@ -7,7 +7,7 @@ from datetime import datetime
 import cPickle
 
 import numpy
-from pylearn2.space import Conv2DSpace
+from pylearn2.space import Conv2DSpace, VectorSpace, CompositeSpace
 from pylearn2.datasets import cifar10
 
 
@@ -147,7 +147,7 @@ class Evaluator(object):
             print '%d, test error: %.3f, time: %.2f' % (self.step_number, mean_error, _time)
         self.step_number += 1
 
-def get_cifar_iterator(which_set, mode='sequential', batch_size=128, num_batches=None, center=False, rescale=True, axes=['c', 0, 1, 'b']):
+def get_cifar_iterator(which_set, mode='sequential', batch_size=128, num_batches=None, center=False, rescale=True, axes=['c', 0, 1, 'b'], targets=False):
     dataset = cifar10.CIFAR10(which_set=which_set,
                               center=center,
                               rescale=rescale,
@@ -155,7 +155,12 @@ def get_cifar_iterator(which_set, mode='sequential', batch_size=128, num_batches
                               )
     input_convspace = Conv2DSpace(shape=(32, 32), num_channels=3,
                               axes=axes)
-    data_specs = (input_convspace,'features')
+    #target_space = VectorSpace(dim=10)
+    #data_specs = (input_convspace,'features')
+
+    target_space = VectorSpace(dim=10)
+    data_specs = (CompositeSpace((input_convspace, target_space)), ("features", "targets"))
+
     if num_batches:
         iterator = dataset.iterator(mode=mode, batch_size=batch_size, num_batches=num_batches, data_specs=data_specs)
     else:

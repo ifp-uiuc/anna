@@ -69,7 +69,7 @@ class Model(object):
                             weights_std=winitD1,
                             init_bias_value=0.0,
                             nonlinearity=nonlinearity,
-                            dropout=0.0)
+                            dropout=0.5)
     y_hat = layers.DenseLayer(fc5,
                               n_outputs=10,
                               weights_std=winitD2,

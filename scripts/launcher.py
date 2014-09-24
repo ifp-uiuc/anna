@@ -63,8 +63,8 @@ if __name__ == "__main__":
 
     shutil.copy(model_file_path, os.path.join(out_path, 'model.py'))
     shutil.copy(train_file_path, os.path.join(out_path, 'train.py'))
-    shutil.copy(model_file_path, os.path.join(out_path, 'train_scratch.py'))
-    shutil.copy(train_file_path, os.path.join(out_path, 'train_finetune.py'))
+    shutil.copy(scratch_file_path, os.path.join(out_path, 'train_scratch.py'))
+    shutil.copy(finetune_file_path, os.path.join(out_path, 'train_finetune.py'))
 
     print('=================== Launch Process =======================')
 

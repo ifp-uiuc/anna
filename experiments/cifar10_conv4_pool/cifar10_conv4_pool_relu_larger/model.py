@@ -13,6 +13,7 @@ class Model(object):
     y = T.lvector(name='labels')
     k = float(numpy.random.rand()*1+0.2)
     # k = 0.6
+    k = 0.643
     print '## k = %.3f' % k
     winit1 = k/numpy.sqrt(8*8*3) # was = 0.25 
     winit2 = k/numpy.sqrt(5*5*96) # was = 0.75
@@ -60,7 +61,7 @@ class Model(object):
     unpool6 = cc_layers.CudaConvnetUnpooling2DLayer(deconv6, pool2)
     deconv7 = cc_layers.CudaConvnetDeconv2DLayer(unpool6, conv2)
     unpool7 = cc_layers.CudaConvnetUnpooling2DLayer(deconv7, pool1)
-    output = cc_layers.CudaConvnetDeconv2DLayer(unpool7, conv1)
+    output = cc_layers.CudaConvnetDeconv2DLayer(unpool7, conv1, nonlinearity=layers.identity)
     
     # Layers for Supervised Finetuning
     conv4_shuffle = cc_layers.ShuffleC01BToBC01Layer(conv4)    

@@ -244,7 +244,7 @@ class ACudaConvnetConv2DLayer(CudaConvnetConv2DLayer):
 class CudaConvnetDeconv2DLayer(object):
     def __init__(self,
                  input_layer,
-                 mirror_layer):
+                 mirror_layer, nonlinearity=None):
         """
         Only the valid border mode is supported.
 
@@ -257,13 +257,17 @@ class CudaConvnetDeconv2DLayer(object):
         self.input_shape = self.input_layer.get_output_shape()
         n_filters = self.input_shape[0]
 
+        if nonlinearity:
+            self.nonlinearity = nonlinearity
+        else:
+            self.nonlinearity = mirror_layer.nonlinearity
+
         self.n_channels = mirror_layer.n_channels
         self.n_filters = mirror_layer.n_filters
         self.filter_size = mirror_layer.filter_size
         self.weights_std = mirror_layer.weights_std
         self.init_bias_value = mirror_layer.init_bias_value
         self.stride = mirror_layer.stride
-        self.nonlinearity = mirror_layer.nonlinearity
         self.dropout = mirror_layer.dropout
         self.partial_sum = mirror_layer.partial_sum
         self.pad = mirror_layer.pad

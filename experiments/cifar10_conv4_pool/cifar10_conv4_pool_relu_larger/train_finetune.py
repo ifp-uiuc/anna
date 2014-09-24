@@ -38,4 +38,4 @@ for x_batch, y_batch in train_iterator:
         x_test_batch, y_test_batch = test_iterator.next()
         y_test_batch = numpy.int64(numpy.argmax(y_test_batch, axis=1))
         test_accuracy = model.accuracy(x_test_batch/2, y_test_batch)
-        monitor.stop_test(1-accuracy)
+        monitor.stop_test(1-test_accuracy)

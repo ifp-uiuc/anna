@@ -10,9 +10,9 @@ import numpy
 from pylearn2.space import Conv2DSpace, VectorSpace, CompositeSpace
 from pylearn2.datasets import cifar10
 
-
 def load_checkpoint(model, checkpoint_path):
-    all_parameters = model.all_parameters_symbol
+    # Added supervised finetuning parameters to this line
+    all_parameters = model.all_parameters_symbol+model.all_parameters_classify_symbol
     f = open(checkpoint_path, 'rb')
     checkpoint = cPickle.load(f)
     f.close()
@@ -21,7 +21,11 @@ def load_checkpoint(model, checkpoint_path):
      in zip(all_parameters, checkpoint)]
 
 def save_checkpoint(model):
-    all_parameters = model.all_parameters_symbol
+    all_parameters_unsupervised = model.all_parameters_symbol
+    # Added these two lines to incorporate supervised finetuning parameters
+    all_parameters_supervised_finetune = model.all_parameters_classify_symbol
+    all_parameters = all_parameters_unsupervised+all_parameters_supervised_finetune
+
     checkpoint = [param.get_value() for param in all_parameters]
     tt = datetime.now()
     time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')
@@ -33,6 +37,29 @@ def save_checkpoint(model):
     f = open(checkpoint_path, 'wb')
     cPickle.dump(checkpoint, f)
     f.close()
+
+# def load_checkpoint(model, checkpoint_path):
+#     all_parameters = model.all_parameters_symbol
+#     f = open(checkpoint_path, 'rb')
+#     checkpoint = cPickle.load(f)
+#     f.close()
+    
+#     [model_param.set_value(checkpoint_param) for model_param, checkpoint_param 
+#      in zip(all_parameters, checkpoint)]
+
+# def save_checkpoint(model):
+#     all_parameters = model.all_parameters_symbol
+#     checkpoint = [param.get_value() for param in all_parameters]
+#     tt = datetime.now()
+#     time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')
+#     checkpoint_name = '%s-%s.pkl' % (model.name, time_string)
+#     print(model.path)
+#     checkpoint_path = os.path.join(model.path, 'checkpoints', checkpoint_name)
+
+#     print 'Saving model checkpoint to: %s' % checkpoint_path
+#     f = open(checkpoint_path, 'wb')
+#     cPickle.dump(checkpoint, f)
+#     f.close()
 
 def rescale(data):
     data = data/2.0*255.0

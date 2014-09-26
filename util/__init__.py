@@ -105,6 +105,54 @@ class ReconVisualizer(object):
             filepath = os.path.join(sub_path, filename)
             to_save.save(filepath)
 
+class FilterVisualizer(object):
+    def __init__(self, model, steps=2000):
+        self.model = model
+        self.count = 0
+        self.steps = steps
+        self.save_path = os.path.join(self.model.path, 'filters')
+        
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
+    
+    def run(self):
+        if self.count % self.steps == 0:
+            self._save()
+        self.count += 1
+    
+    def _save(self):
+        tt = datetime.now()
+        time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')
+        
+        W = self.model.conv1.W.get_value()
+        W = W.transpose(1,2,0,3)
+
+        row_list = []
+        img_list = []
+        k = 0
+        
+        rows = W.shape[3]/16
+        for i in range(rows):
+            for j in range(16):
+                W0 = W[:,:,:,k]
+                W0[:,:,0] -= W0[:,:,0].min()
+                W0[:,:,0] /= W0[:,:,0].max()
+                W0[:,:,1] -= W0[:,:,1].min()
+                W0[:,:,1] /= W0[:,:,1].max()
+                W0[:,:,2] -= W0[:,:,2].min()
+                W0[:,:,2] /= W0[:,:,2].max()
+                row_list.append(W0)
+                k += 1
+            row_image = numpy.hstack(row_list)
+            row_list = []
+            img_list.append(row_image)
+        img_image = numpy.vstack(img_list)
+
+        to_save = Image.fromarray(numpy.uint8(255*img_image))
+        filename = 'filters_'+time_string+'.png'
+        filepath = os.path.join(self.save_path, filename)
+        to_save.save(filepath)
+
 class Monitor(object):
     errors = []
     times = []

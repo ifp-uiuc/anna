@@ -17,6 +17,7 @@ print('Loading Data')
 data = numpy.load('/data/stl10_matlab/unsupervised.npy')
 data = numpy.float32(data)
 data /= 255.0
+data *= 2.0
 train_data = data[0:90000, :, :, :]
 test_data = data[90000::, :, :, :]
 

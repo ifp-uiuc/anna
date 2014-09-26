@@ -16,6 +16,7 @@ print('Loading Data')
 data = numpy.load('/data/stl10_matlab/unsupervised.npy')
 data = numpy.float32(data)
 data /= 255.0
+data *= 2.0
 train_data = data[0:90000, :, :, :]
 test_data = data[90000::, :, :, :]
 
@@ -33,6 +34,6 @@ print('Trainig Model')
 for x_batch in train_iterator:
     x_batch = x_batch.transpose(1, 2, 3, 0)    
     monitor.start()
-    error = model.train(x_batch)
+    error = model.train(x_batch/2)
     monitor.stop(error) 
     recon_visualizer.run()   

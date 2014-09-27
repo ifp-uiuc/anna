@@ -7,7 +7,7 @@ def get_error(log_path):
 	lines = file.readlines()
 	file.close()
 
-	error = [float(line.split(',')[1].split(':')[1].split(' ')[1]) for line in lines if line.startswith('*')]
+	error = [float(line.split(',')[1].split(':')[1].split(' ')[1]) for line in lines if line.startswith('&')]
 	return error
 
 if __name__ == "__main__":

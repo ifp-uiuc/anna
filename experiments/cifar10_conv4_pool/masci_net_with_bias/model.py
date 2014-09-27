@@ -18,7 +18,7 @@ class Model(object):
     winit2 = k/numpy.sqrt(5*5*96) # was = 0.75
     winit3 = k/numpy.sqrt(5*5*144)    
     winitD2 = k/numpy.sqrt(300)
-    binit = 0.0
+    binit = 1.0
     nonlinearity = layers.rectify
 
     conv1 = cc_layers.CudaConvnetConv2DLayer(input, 
@@ -56,19 +56,19 @@ class Model(object):
     fc4 = layers.DenseLayer(conv3_shuffle,
                             n_outputs = 300,
                             weights_std=winitD1,
-                            init_bias_value=0.0,
+                            init_bias_value=binit,
                             nonlinearity=nonlinearity,
                             dropout=0.5)
     y_hat = layers.DenseLayer(fc4,
                               n_outputs=10,
                               weights_std=winitD2,
-                              init_bias_value=0.0,
+                              init_bias_value=binit,
                               nonlinearity=layers.softmax)
 
     def __init__(self, name, path):
         self.name = name
         self.path = path
-        self.learning_rate_symbol = theano.shared(numpy.array(0.00001, dtype=theano.config.floatX))
+        self.learning_rate_symbol = theano.shared(numpy.array(0.0000001, dtype=theano.config.floatX))
         
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
         # can switch to gen_updates_regular_momentum

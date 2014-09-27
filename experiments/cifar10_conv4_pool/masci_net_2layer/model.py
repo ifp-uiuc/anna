@@ -37,29 +37,21 @@ class Model(object):
                                              nonlinearity=nonlinearity,
                                              pad=1)
     pool2 = cc_layers.CudaConvnetPooling2DLayer(conv2, 2, stride=2)
-    conv3 = cc_layers.CudaConvnetConv2DLayer(pool2,
-                                             n_filters=192,
-                                             filter_size=5,
-                                             weights_std=winit3,
-                                             init_bias_value=binit,
-                                             nonlinearity=nonlinearity,
-                                             pad=1)
-    deconv4 = cc_layers.CudaConvnetDeconv2DLayer(conv3, conv3)
-    unpool4 = cc_layers.CudaConvnetUnpooling2DLayer(deconv4, pool2)
-    deconv5 = cc_layers.CudaConvnetDeconv2DLayer(unpool4, conv2)
-    unpool5 = cc_layers.CudaConvnetUnpooling2DLayer(deconv5, pool1)
-    output = cc_layers.CudaConvnetDeconv2DLayer(unpool5, conv1, nonlinearity=layers.identity)
+    unpool3 = cc_layers.CudaConvnetUnpooling2DLayer(pool2, pool2)
+    deconv3 = cc_layers.CudaConvnetDeconv2DLayer(unpool3, conv2)
+    unpool4 = cc_layers.CudaConvnetUnpooling2DLayer(deconv3, pool1)
+    output = cc_layers.CudaConvnetDeconv2DLayer(unpool4, conv1, nonlinearity=layers.identity)
     
     # Layers for Supervised Finetuning    
-    conv3_shuffle = cc_layers.ShuffleC01BToBC01Layer(conv3)    
-    winitD1 = k/numpy.sqrt(numpy.prod(conv3.get_output_shape()))
-    fc4 = layers.DenseLayer(conv3_shuffle,
+    pool2_shuffle = cc_layers.ShuffleC01BToBC01Layer(pool2)    
+    winitD1 = k/numpy.sqrt(numpy.prod(pool2.get_output_shape()))
+    fc3 = layers.DenseLayer(pool2_shuffle,
                             n_outputs = 300,
                             weights_std=winitD1,
                             init_bias_value=0.0,
                             nonlinearity=nonlinearity,
                             dropout=0.5)
-    y_hat = layers.DenseLayer(fc4,
+    y_hat = layers.DenseLayer(fc3,
                               n_outputs=10,
                               weights_std=winitD2,
                               init_bias_value=0.0,

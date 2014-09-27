@@ -11,8 +11,8 @@ class Model(object):
     batch = 128
     input = cc_layers.CudaConvnetInput2DLayer(batch, 3, 32, 32)    
     y = T.lvector(name='labels')
-    # k = float(numpy.random.rand()*1+0.2)
-    k = 0.6
+    #k = float(numpy.random.rand()*1+0.2)
+    k = 0.5
     print '## k = %.3f' % k
     winit1 = k/numpy.sqrt(5*5*3) # was = 0.25 
     winit2 = k/numpy.sqrt(5*5*96) # was = 0.75
@@ -50,7 +50,7 @@ class Model(object):
     def __init__(self, name, path):
         self.name = name
         self.path = path
-        self.learning_rate_symbol = theano.shared(numpy.array(0.00001, dtype=theano.config.floatX))
+        self.learning_rate_symbol = theano.shared(numpy.array(0.000001, dtype=theano.config.floatX))
         
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
         # can switch to gen_updates_regular_momentum

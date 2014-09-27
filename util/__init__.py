@@ -7,6 +7,11 @@ from datetime import datetime
 import cPickle
 
 import numpy
+
+import theano
+import theano.tensor as T
+from theano.sandbox.cuda.basic_ops import gpu_contiguous
+from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
 from pylearn2.space import Conv2DSpace, VectorSpace, CompositeSpace
 from pylearn2.datasets import cifar10
 
@@ -253,3 +258,29 @@ def get_cifar_iterator(which_set, mode='sequential', batch_size=128, num_batches
     else:
         iterator = dataset.iterator(mode=mode, batch_size=batch_size, data_specs=data_specs)
     return iterator
+
+class Normer(object):
+    def __init__(self):
+        
+        # magic numbers that make things work for stl10
+        self.filter_size = 7
+        self.pad = self.filter_size/2 -1
+        self.num_channels = 3
+        self.num_filters = 16
+        input = T.ftensor4(name='input')
+        filter = T.ftensor4(name='filter')
+        gpu_input = gpu_contiguous(input)
+        gpu_filter = gpu_contiguous(filter)
+        
+        self.conv_func = theano.function([input, filter], FilterActs(pad=3)(gpu_input, gpu_filter))
+        n = self.num_channels * self.filter_size * self.filter_size
+        self.w = numpy.float32(numpy.ones((self.num_channels, self.filter_size, self.filter_size, self.num_filters)))/n
+        
+    def run(self, x_batch):
+        mean_batch = self.conv_func(x_batch, self.w)
+        mean_batch = numpy.tile(numpy.array(mean_batch[0,:,:,:])[None, :, :], (3, 1, 1, 1))
+        diff_batch = x_batch - mean_batch
+        std_batch = self.conv_func(diff_batch**2, self.w)
+        std_batch = numpy.tile(numpy.array(std_batch[0,:,:,:])[None, :, :], (3, 1, 1, 1))
+        norm_batch = diff_batch/(numpy.array(std_batch)**(1/2))
+        return norm_batch

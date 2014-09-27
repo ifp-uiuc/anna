@@ -1,0 +1,5 @@
+#
+# This is a folder to house scripts to compute train/test reconstruction
+# error as well as train/test accuracy on STL10. Please remove this
+# README file when the scripts have been written.
+#

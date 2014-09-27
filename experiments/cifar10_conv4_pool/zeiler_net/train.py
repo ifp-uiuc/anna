@@ -9,7 +9,7 @@ print('Start')
 model = Model(sys.argv[1], sys.argv[2])
 #checkpoint = '/experiments/cifar_conv4_pool_relu_right/checkpoints/cifar_conv4_pool_relu_right-09m-23d-00h-37m-40s.pkl'
 #util.load_checkpoint(model, checkpoint)
-monitor = util.Monitor(model)
+monitor = util.Monitor(model, save_steps=1000)
 
 print('Loading Data')
 train_iterator = util.get_cifar_iterator('train', 
@@ -24,8 +24,8 @@ test_iterator = util.get_cifar_iterator('test',
                                     rescale=True)
 
 test_x_batch, test_y_batch = test_iterator.next()
-recon_visualizer = util.ReconVisualizer(model, test_x_batch)
-filter_visualizer = util.FilterVisualizer(model)
+recon_visualizer = util.ReconVisualizer(model, test_x_batch, steps=200)
+filter_visualizer = util.FilterVisualizer(model, steps=200)
 
 
 #model.learning_rate_symbol.set_value(0.000005/10)

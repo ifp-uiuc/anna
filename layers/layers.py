@@ -39,6 +39,20 @@ def compress(x, C=10000.0):
 def compress_abs(x, C=10000.0):
     return T.log(1 + C * abs(x))
 
+class NoiseLayer(object):
+    def __init__(self, input_layer, avg=0.0, std=1.0):
+        self.input_layer = input_layer
+        self.avg = avg
+        self.std = std
+    
+    def get_output_shape(self):
+        return self.input_layer.get_output_shape()
+    
+    def output(self, input=None, *args, **kwargs):
+        if input == None:
+            input = self.input_layer.output(*args, **kwargs)
+        return input + srng.normal(self.input_layer.output().shape, avg=self.avg, std=self.std, nstreams=1)
+
 
 def all_layers(layer):
     """

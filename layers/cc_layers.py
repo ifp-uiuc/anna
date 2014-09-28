@@ -314,7 +314,7 @@ class CudaConvnetDeconv2DLayer(object):
             deconved = self.image_acts_op(contiguous_input, contiguous_filters)
         else:
             _, x, y, _ = self.get_output_shape()
-            deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable(x, y))
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable((x, y)))
         return self.nonlinearity(deconved)
 
 class ACudaConvnetDeconv2DLayer(CudaConvnetDeconv2DLayer):

@@ -44,6 +44,8 @@ class NoiseLayer(object):
         self.input_layer = input_layer
         self.avg = avg
         self.std = std
+        self.mb_size = self.input_layer.mb_size
+        self.params = []
     
     def get_output_shape(self):
         return self.input_layer.get_output_shape()

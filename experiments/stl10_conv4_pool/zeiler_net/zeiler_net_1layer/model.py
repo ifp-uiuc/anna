@@ -15,11 +15,8 @@ class Model(object):
     #k = 0.812
     print '## k = %.3f' % k
     winit1 = k/numpy.sqrt(7*7*3) # was = 0.25 
-    winit2 = k/numpy.sqrt(7*7*48) # was = 0.75
-    winit3 = k/numpy.sqrt(7*7*96)    
-    winit4 = k/numpy.sqrt(7*7*96)
     winitD2 = k/numpy.sqrt(300)
-    binit = 0.0
+    binit = 1.0
     nonlinearity = layers.rectify
 
     conv1 = cc_layers.CudaConvnetConv2DLayer(input, 
@@ -30,37 +27,19 @@ class Model(object):
                                              nonlinearity=nonlinearity,
                                              pad=1)
     pool1 = cc_layers.CudaConvnetPooling2DLayer(conv1, 2, stride=2)
-    conv2 = cc_layers.CudaConvnetConv2DLayer(pool1,
-                                             n_filters=96,
-                                             filter_size=7,
-                                             weights_std=winit2,
-                                             init_bias_value=binit,
-                                             nonlinearity=nonlinearity,
-                                             pad=1)
-    pool2 = cc_layers.CudaConvnetPooling2DLayer(conv2, 2, stride=2)
-    conv3 = cc_layers.CudaConvnetConv2DLayer(pool2,
-                                             n_filters=96,
-                                             filter_size=7,
-                                             weights_std=winit3,
-                                             init_bias_value=binit,
-                                             nonlinearity=nonlinearity,
-                                             pad=1)
-    deconv4 = cc_layers.CudaConvnetDeconv2DLayer(conv3, conv3)
-    unpool4 = cc_layers.CudaConvnetUnpooling2DLayer(deconv4, pool2)
-    deconv5 = cc_layers.CudaConvnetDeconv2DLayer(unpool4, conv2)
-    unpool5 = cc_layers.CudaConvnetUnpooling2DLayer(deconv5, pool1)
-    output = cc_layers.CudaConvnetDeconv2DLayer(unpool5, conv1, nonlinearity=layers.identity)
+    unpool2 = cc_layers.CudaConvnetUnpooling2DLayer(pool1, pool1)
+    output = cc_layers.CudaConvnetDeconv2DLayer(unpool2, conv1, nonlinearity=layers.identity)
     
     # Layers for Supervised Finetuning    
-    conv3_shuffle = cc_layers.ShuffleC01BToBC01Layer(conv3)    
-    winitD1 = k/numpy.sqrt(numpy.prod(conv3.get_output_shape()))
-    fc4 = layers.DenseLayer(conv3_shuffle,
+    pool1_shuffle = cc_layers.ShuffleC01BToBC01Layer(pool1)    
+    winitD1 = k/numpy.sqrt(numpy.prod(pool1.get_output_shape()))
+    fc2 = layers.DenseLayer(pool1_shuffle,
                             n_outputs = 300,
                             weights_std=winitD1,
                             init_bias_value=0.0,
                             nonlinearity=nonlinearity,
                             dropout=0.5)
-    y_hat = layers.DenseLayer(fc4,
+    y_hat = layers.DenseLayer(fc2,
                               n_outputs=10,
                               weights_std=winitD2,
                               init_bias_value=0.0,
@@ -69,7 +48,7 @@ class Model(object):
     def __init__(self, name, path):
         self.name = name
         self.path = path
-        self.learning_rate_symbol = theano.shared(numpy.array(0.0000005, dtype=theano.config.floatX))
+        self.learning_rate_symbol = theano.shared(numpy.array(0.00000005, dtype=theano.config.floatX))
         
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
         # can switch to gen_updates_regular_momentum

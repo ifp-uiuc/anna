@@ -23,8 +23,8 @@ def rectify(x):
 def a_rectify(x, a):
     return (1-a)*x + (a)*rectify(x)
 
-def a_trec(x, a):
-    return x*(T.abs_(x) > a)
+def trec(x):
+    return x*(x > 1)
     
 def identity(x):
     # To create a linear layer.

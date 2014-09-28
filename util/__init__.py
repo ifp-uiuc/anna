@@ -110,6 +110,51 @@ class ReconVisualizer(object):
             filepath = os.path.join(sub_path, filename)
             to_save.save(filepath)
 
+class NormReconVisualizer(object):
+    def __init__(self, model, batch, steps=2000):
+        self.model = model
+        self.batch = batch
+        self.count = 0
+        self.steps = steps
+        self.save_path = os.path.join(self.model.path, 'recon')
+        
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
+    
+    def run(self):
+        if self.count % self.steps == 0:
+            self._save()
+        self.count += 1
+    
+    def _save(self):
+        tt = datetime.now()
+        time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')
+        sub_path = os.path.join(self.save_path, time_string)
+        
+        if not os.path.exists(sub_path):
+            os.makedirs(sub_path)
+        
+        prediction = self.model.prediction(self.batch)
+        for i in range(128):
+            image = self.batch[:, :, :, i]
+            image = image.transpose(1, 2, 0)
+            image -= image.min()
+            image /= image.max()
+            image *= 255
+
+            recon = numpy.array(prediction[:, :, :, i])
+            recon = recon.transpose(1, 2, 0)
+            recon -= recon.min()
+            recon /= recon.max()
+            recon *= 255
+
+            image_array = numpy.uint8(numpy.hstack((image, recon)))
+
+            to_save = Image.fromarray(image_array)
+            filename = 'recon-%02d.jpeg' % i
+            filepath = os.path.join(sub_path, filename)
+            to_save.save(filepath)
+
 class FilterVisualizer(object):
     def __init__(self, model, steps=2000):
         self.model = model
@@ -260,7 +305,7 @@ def get_cifar_iterator(which_set, mode='sequential', batch_size=128, num_batches
     return iterator
 
 class Normer(object):
-    def __init__(self):
+    def __init__(self, filter_size=7):
         
         # magic numbers that make things work for stl10
         self.filter_size = 7
@@ -284,3 +329,26 @@ class Normer(object):
         std_batch = numpy.tile(numpy.array(std_batch[0,:,:,:])[None, :, :], (3, 1, 1, 1))
         norm_batch = diff_batch/(numpy.array(std_batch)**(1/2))
         return norm_batch
+
+
+class PatchGrabber(object):
+    def __init__(self, num_patches, patch_size):
+        self.num_patches = num_patches
+        self.patch_size = patch_size
+
+    def run(self, x_batch):
+        image_size = x_batch.shape[1]
+        batch_size = x_batch.shape[-1]
+
+        patches = numpy.zeros((3, self.patch_size, self.patch_size, self.num_patches),dtype=numpy.float32)
+
+        for i_patch in range(self.num_patches):
+            x_start = numpy.random.randint(image_size-self.patch_size)
+            y_start = numpy.random.randint(image_size-self.patch_size)
+            image_id = numpy.random.randint(batch_size)
+            x_slice = slice(x_start, x_start+self.patch_size)
+            y_slice = slice(y_start, y_start+self.patch_size)
+            patch = x_batch[:, x_slice, y_slice, image_id]
+            patches[:, :, :, i_patch] = patch
+
+        return patches

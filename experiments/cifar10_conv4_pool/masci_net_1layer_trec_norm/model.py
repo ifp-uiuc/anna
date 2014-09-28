@@ -19,7 +19,7 @@ class Model(object):
     winit3 = k/numpy.sqrt(5*5*144)    
     winitD2 = k/numpy.sqrt(300)
     binit = 0.0
-    nonlinearity = layers.trec
+    nonlinearity = layers.rectify
 
     conv1 = cc_layers.CudaConvnetConv2DNoBiasLayer(input, 
                                              n_filters=96,
@@ -49,7 +49,9 @@ class Model(object):
     def __init__(self, name, path):
         self.name = name
         self.path = path
-        self.learning_rate_symbol = theano.shared(numpy.array(0.0000001, dtype=theano.config.floatX))
+        # lr that worked 0.000001, cost of 48 at 900 steps
+        # lr that worked 0.00001, cost of 30 at 900 steps
+        self.learning_rate_symbol = theano.shared(numpy.array(0.0001, dtype=theano.config.floatX))
         
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
         # can switch to gen_updates_regular_momentum

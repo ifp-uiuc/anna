@@ -4,6 +4,7 @@ import os
 import Image
 from time import time
 from datetime import datetime
+from copy import deepcopy
 import cPickle
 
 import numpy
@@ -74,7 +75,7 @@ def rescale(data):
 class ReconVisualizer(object):
     def __init__(self, model, batch, steps=2000):
         self.model = model
-        self.batch = batch
+        self.batch = deepcopy(batch)
         self.count = 0
         self.steps = steps
         self.save_path = os.path.join(self.model.path, 'recon')
@@ -113,7 +114,7 @@ class ReconVisualizer(object):
 class NormReconVisualizer(object):
     def __init__(self, model, batch, steps=2000):
         self.model = model
-        self.batch = batch
+        self.batch = deepcopy(batch)
         self.count = 0
         self.steps = steps
         self.save_path = os.path.join(self.model.path, 'recon')
@@ -144,11 +145,17 @@ class NormReconVisualizer(object):
 
             recon = numpy.array(prediction[:, :, :, i])
             recon = recon.transpose(1, 2, 0)
-            recon -= recon.min()
-            recon /= recon.max()
+            recon2 = deepcopy(recon)*1.0
+
+            recon -= image.min()
+            recon /= image.max()
             recon *= 255
 
-            image_array = numpy.uint8(numpy.hstack((image, recon)))
+            recon2 -= recon2.min()
+            recon2 /= recon2.max()
+            recon2 *= 255
+
+            image_array = numpy.uint8(numpy.hstack((image, recon, recon2)))
 
             to_save = Image.fromarray(image_array)
             filename = 'recon-%02d.jpeg' % i

@@ -137,18 +137,20 @@ class NormReconVisualizer(object):
         
         prediction = self.model.prediction(self.batch)
         for i in range(128):
-            image = self.batch[:, :, :, i]
+            image = deepcopy(self.batch[:, :, :, i])
             image = image.transpose(1, 2, 0)
-            image -= image.min()
-            image /= image.max()
+            image_min = image.min()
+            image -= image_min
+            image_max = image.max()
+            image /= image_max
             image *= 255
 
             recon = numpy.array(prediction[:, :, :, i])
             recon = recon.transpose(1, 2, 0)
             recon2 = deepcopy(recon)*1.0
 
-            recon -= image.min()
-            recon /= image.max()
+            recon -= image_min
+            recon /= image_max
             recon *= 255
 
             recon2 -= recon2.min()

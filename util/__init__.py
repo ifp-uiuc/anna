@@ -341,15 +341,16 @@ class Normer(object):
 
 
 class PatchGrabber(object):
-    def __init__(self, num_patches, patch_size):
+    def __init__(self, num_patches, patch_size, num_channels=3):
         self.num_patches = num_patches
         self.patch_size = patch_size
+        self.num_channels = num_channels
 
     def run(self, x_batch):
         image_size = x_batch.shape[1]
         batch_size = x_batch.shape[-1]
 
-        patches = numpy.zeros((3, self.patch_size, self.patch_size, self.num_patches),dtype=numpy.float32)
+        patches = numpy.zeros((self.num_channels, self.patch_size, self.patch_size, self.num_patches),dtype=numpy.float32)
 
         for i_patch in range(self.num_patches):
             x_start = numpy.random.randint(image_size-self.patch_size)

@@ -16,20 +16,18 @@ class Model(object):
     print '## k = %.3f' % k
     winit1 = k/numpy.sqrt(7*7*3) # was = 0.25 
     winitD2 = k/numpy.sqrt(300)
-    binit = 1.0
+    binit = 0.0    
     nonlinearity = layers.rectify
 
-    input_noise = layers.NoiseLayer(input, avg=0.0, std=0.1)
-    conv1 = cc_layers.CudaConvnetConv2DLayer(input_noise, 
-                                             n_filters=48,
+    conv1 = cc_layers.CudaConvnetConv2DNoBiasLayer(input, 
+                                             n_filters=96,
                                              filter_size=7,
                                              weights_std=winit1,
-                                             init_bias_value=binit,
                                              nonlinearity=nonlinearity,
                                              pad=1)
     pool1 = cc_layers.CudaConvnetPooling2DLayer(conv1, 2, stride=2)
     unpool2 = cc_layers.CudaConvnetUnpooling2DLayer(pool1, pool1)
-    output = cc_layers.CudaConvnetDeconv2DLayer(unpool2, conv1, nonlinearity=layers.identity)
+    output = cc_layers.CudaConvnetDeconv2DNoBiasLayer(unpool2, conv1, nonlinearity=layers.identity)
     
     # Layers for Supervised Finetuning    
     pool1_shuffle = cc_layers.ShuffleC01BToBC01Layer(pool1)    
@@ -49,7 +47,7 @@ class Model(object):
     def __init__(self, name, path):
         self.name = name
         self.path = path
-        self.learning_rate_symbol = theano.shared(numpy.array(0.000000005, dtype=theano.config.floatX))
+        self.learning_rate_symbol = theano.shared(numpy.array(0.00001, dtype=theano.config.floatX))
         
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
         # can switch to gen_updates_regular_momentum

@@ -15,32 +15,41 @@ class Model(object):
     k = 0.2
     print '## k = %.3f' % k
     winit1 = k/numpy.sqrt(7*7*3) # was = 0.25 
+    winit2 = k/numpy.sqrt(7*7*96)
     winitD2 = k/numpy.sqrt(300)
-    binit = 1.0
+    binit = 0.0
+    
     nonlinearity = layers.rectify
 
-    input_noise = layers.NoiseLayer(input, avg=0.0, std=0.1)
-    conv1 = cc_layers.CudaConvnetConv2DLayer(input_noise, 
-                                             n_filters=48,
+    conv1 = cc_layers.CudaConvnetConv2DNoBiasLayer(input, 
+                                             n_filters=96,
                                              filter_size=7,
                                              weights_std=winit1,
-                                             init_bias_value=binit,
                                              nonlinearity=nonlinearity,
                                              pad=1)
     pool1 = cc_layers.CudaConvnetPooling2DLayer(conv1, 2, stride=2)
-    unpool2 = cc_layers.CudaConvnetUnpooling2DLayer(pool1, pool1)
-    output = cc_layers.CudaConvnetDeconv2DLayer(unpool2, conv1, nonlinearity=layers.identity)
+    conv2 = cc_layers.CudaConvnetConv2DNoBiasLayer(pool1, 
+                                             n_filters=96,
+                                             filter_size=7,
+                                             weights_std=winit2,
+                                             nonlinearity=nonlinearity,
+                                             pad=1)
+    pool2 = cc_layers.CudaConvnetPooling2DLayer(conv2, 2, stride=2)
+    unpool3 = cc_layers.CudaConvnetUnpooling2DLayer(pool2, pool2)
+    deconv3 = cc_layers.CudaConvnetDeconv2DNoBiasLayer(unpool3, conv2)
+    unpool4 = cc_layers.CudaConvnetUnpooling2DLayer(deconv3, pool1)
+    output = cc_layers.CudaConvnetDeconv2DNoBiasLayer(unpool4, conv1, nonlinearity=layers.identity)
     
     # Layers for Supervised Finetuning    
-    pool1_shuffle = cc_layers.ShuffleC01BToBC01Layer(pool1)    
-    winitD1 = k/numpy.sqrt(numpy.prod(pool1.get_output_shape()))
-    fc2 = layers.DenseLayer(pool1_shuffle,
+    pool2_shuffle = cc_layers.ShuffleC01BToBC01Layer(pool2)    
+    winitD1 = k/numpy.sqrt(numpy.prod(pool2.get_output_shape()))
+    fc3 = layers.DenseLayer(pool2_shuffle,
                             n_outputs = 300,
                             weights_std=winitD1,
                             init_bias_value=0.0,
                             nonlinearity=nonlinearity,
                             dropout=0.5)
-    y_hat = layers.DenseLayer(fc2,
+    y_hat = layers.DenseLayer(fc3,
                               n_outputs=10,
                               weights_std=winitD2,
                               init_bias_value=0.0,
@@ -49,7 +58,7 @@ class Model(object):
     def __init__(self, name, path):
         self.name = name
         self.path = path
-        self.learning_rate_symbol = theano.shared(numpy.array(0.000000005, dtype=theano.config.floatX))
+        self.learning_rate_symbol = theano.shared(numpy.array(0.000001, dtype=theano.config.floatX))
         
         self.all_parameters_symbol = layers.all_parameters(self._get_output_layer())
         # can switch to gen_updates_regular_momentum

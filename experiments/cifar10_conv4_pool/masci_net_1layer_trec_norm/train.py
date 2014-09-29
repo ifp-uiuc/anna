@@ -91,7 +91,7 @@ for x_batch, y_batch in train_iterator:
     monitor.stop(error) 
     recon_visualizer.run()   
     filter_visualizer.run()
-    if count*1.0 / 3000 == 1:
+    if count*1.0 / 100000 == 1:
         print 'increasing learning rate...'
         model.learning_rate_symbol.set_value(0.001)
     count += 1

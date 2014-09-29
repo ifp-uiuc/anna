@@ -190,21 +190,29 @@ class FilterVisualizer(object):
         img_list = []
         k = 0
         
-        rows = W.shape[3]/16
+        rows = W.shape[3]/16        
+        bar = 0.5*numpy.ones((W.shape[0],1,3))
         for i in range(rows):
+            row_list.append(bar)
             for j in range(16):
                 W0 = W[:,:,:,k]
-                W0[:,:,0] -= W0[:,:,0].min()
-                W0[:,:,0] /= W0[:,:,0].max()
-                W0[:,:,1] -= W0[:,:,1].min()
-                W0[:,:,1] /= W0[:,:,1].max()
-                W0[:,:,2] -= W0[:,:,2].min()
-                W0[:,:,2] /= W0[:,:,2].max()
+                W0 -= W0.min()
+                W0 /= W0.max()
+                #W0[:,:,0] -= W0[:,:,0].min()
+                #W0[:,:,0] /= W0[:,:,0].max()
+                #W0[:,:,1] -= W0[:,:,1].min()
+                #W0[:,:,1] /= W0[:,:,1].max()
+                #W0[:,:,2] -= W0[:,:,2].min()
+                #W0[:,:,2] /= W0[:,:,2].max()
                 row_list.append(W0)
+                row_list.append(bar)
                 k += 1
             row_image = numpy.hstack(row_list)
             row_list = []
-            img_list.append(row_image)
+            bar_h = 0.5*numpy.ones((1,row_image.shape[1],3))
+            img_list.append(bar_h)
+            img_list.append(row_image)            
+        img_list.append(bar_h)    
         img_image = numpy.vstack(img_list)
 
         to_save = Image.fromarray(numpy.uint8(255*img_image))

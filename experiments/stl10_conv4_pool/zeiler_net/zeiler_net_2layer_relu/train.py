@@ -92,6 +92,8 @@ test_x_batch = test_iterator.next()
 test_x_batch = test_x_batch.transpose(1, 2, 3, 0)
 test_x_batch = normer.run(test_x_batch)
 recon_visualizer = util.NormReconVisualizer(model, test_x_batch, steps=50)
+recon_visualizer.run()   
+filter_visualizer.run()
 
 #model.learning_rate_symbol.set_value(0.000005/10)
 print('Training Model')

@@ -149,6 +149,9 @@ class NormReconVisualizer(object):
             recon = recon.transpose(1, 2, 0)
             recon2 = deepcopy(recon)*1.0
 
+            recon_mask = (numpy.sum(recon==0.0, axis=2)<3)
+            recon_mask = 255*(numpy.tile(recon_mask[:,:,None],(1,1,3)))
+
             recon -= image_min
             recon /= image_max
             recon *= 255
@@ -157,7 +160,7 @@ class NormReconVisualizer(object):
             recon2 /= recon2.max()
             recon2 *= 255
 
-            image_array = numpy.uint8(numpy.hstack((image, recon, recon2)))
+            image_array = numpy.uint8(numpy.hstack((image, recon, recon2, recon_mask)))
 
             to_save = Image.fromarray(image_array)
             filename = 'recon-%02d.jpeg' % i

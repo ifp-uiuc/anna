@@ -373,3 +373,49 @@ class PatchGrabber(object):
             patches[:, :, :, i_patch] = patch
 
         return patches
+
+class WeightVisualizer(object):
+    def __init__(self, model, model_layer, layer_name, steps=2000):
+        self.model_layer = model_layer
+        self.name = layer_name
+        self.path = model.path
+
+        self.count = 0
+        self.steps = steps
+    
+    def run(self):
+        if self.count % self.steps == 0:
+            self._save()
+        self.count += 1
+
+    def _save(self):
+        tt = datetime.now()
+        time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')
+        
+        W = self.model_layer.W.get_value()
+        W -= W.min()
+        W /= W.max()
+        input_filters, width, height, output_filters = W.shape
+        
+        tall_bar = numpy.zeros((height, 1))
+        output_filter = 0
+        row_list = []
+        image_list = []
+
+        for output_filter in range(output_filters):
+            row_list.append(tall_bar)
+            for input_filter in range(input_filters):
+                temp = W[input_filter, :, :, output_filter]
+                row_list.append(temp)
+                row_list.append(tall_bar)
+            row_image = numpy.hstack(row_list)
+            row_list = []
+            long_bar = numpy.zeros((1, row_image.shape[1]))
+            image_list.append(long_bar)
+            image_list.append(row_image)
+        image_list.append(long_bar)
+        image_image = numpy.vstack(image_list)
+        
+        to_save = Image.fromarray(numpy.uint8(255*image_image))
+        filename = os.path.join(self.path, '%s-%s.png' % (self.name, time_string))
+        to_save.save(filename)

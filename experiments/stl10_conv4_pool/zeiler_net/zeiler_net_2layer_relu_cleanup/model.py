@@ -79,12 +79,12 @@ class SupervisedModel(fastor.models.SupervisedModel):
         pool2_shuffle,
         n_outputs = 300,
         weights_std=winitD1,
-        init_bias_value=0.0,
+        init_bias_value=1.0,
         nonlinearity=nonlinearity,
         dropout=0.0)
     output = layers.DenseLayer(
         fc3,
         n_outputs=10,
         weights_std=winitD2,
-        init_bias_value=0.0,
+        init_bias_value=1.0,
         nonlinearity=layers.softmax)

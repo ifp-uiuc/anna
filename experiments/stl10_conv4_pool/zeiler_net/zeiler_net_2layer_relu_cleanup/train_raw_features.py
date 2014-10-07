@@ -6,12 +6,12 @@ from fastor.datasets import supervised_dataset
 from model import SupervisedModel
 
 print('Start')
-model = SupervisedModel(sys.argv[1], sys.argv[2])
-checkpoint = sys.argv[3]
-print('Loading from {}'.format(checkpoint))
-
-util.load_checkpoint(model, checkpoint)
+model = SupervisedModel(sys.argv[1], sys.argv[2], learning_rate=1e-3)
 monitor = util.Monitor(model)
+
+model.conv1.params = []
+model.conv2.params = []
+model._compile()
 
 # Loading STL-10 dataset
 print('Loading Data')
@@ -35,10 +35,16 @@ train_iterator = train_dataset.iterator(
 test_iterator = test_dataset.iterator(
     mode='random_uniform', batch_size=128, num_batches=100000)
 
-model.learning_rate_symbol.set_value(0.0001)
+# Create object to local contrast normalize a batch.
+# Note: Every batch must be normalized before use.
+normer = util.Normer(filter_size=7)
+
+
 print('Training Model')
 for x_batch, y_batch in train_iterator:        
-    y_batch = numpy.int64(numpy.argmax(y_batch, axis=1))
+    #y_batch = numpy.int64(numpy.argmax(y_batch, axis=1))
+    x_batch = x_batch.transpose(1, 2, 3, 0)
+    x_batch = normer.run(x_batch)
     monitor.start()
     log_prob, accuracy = model.train(x_batch, y_batch)
     monitor.stop(1-accuracy) # monitor takes error instead of accuracy    
@@ -46,6 +52,8 @@ for x_batch, y_batch in train_iterator:
     if monitor.test:
         monitor.start()
         x_test_batch, y_test_batch = test_iterator.next()
-        y_test_batch = numpy.int64(numpy.argmax(y_test_batch, axis=1))
+        x_test_batch = x_test_batch.transpose(1, 2, 3, 0)
+        x_test_batch = normer.run(x_test_batch)
+        #y_test_batch = numpy.int64(numpy.argmax(y_test_batch, axis=1))
         test_accuracy = model.eval(x_test_batch, y_test_batch)
         monitor.stop_test(1-test_accuracy)

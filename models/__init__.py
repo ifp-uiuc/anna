@@ -139,7 +139,7 @@ class SupervisedModel(AbstractModel):
     def eval(self, x_batch, y_batch):
         return self.eval_func(x_batch, y_batch)
 
-    def prediction(self, batch):
+    def prediction(self, x_batch):
         return self.prediction_func(x_batch)
 
     # New methods for SupervisedModel class     

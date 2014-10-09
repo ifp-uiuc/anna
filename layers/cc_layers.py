@@ -27,7 +27,19 @@ class CudaConvnetInput2DLayer(layers.Input2DLayer):
 
 
 class CudaConvnetConv2DLayer(object):
-    def __init__(self, input_layer, n_filters, filter_size, weights_std, init_bias_value, stride=1, nonlinearity=layers.rectify, dropout=0., partial_sum=None, pad=0, untie_biases=False):
+    def __init__(self, 
+                 input_layer, 
+                 n_filters, 
+                 filter_size, 
+                 weights_std, 
+                 init_bias_value, 
+                 stride=1, 
+                 nonlinearity=layers.rectify, 
+                 dropout=0., 
+                 partial_sum=None, 
+                 pad=0, 
+                 untie_biases=False,
+                 trainable=True):
         """
         Only the valid border mode is supported.
 
@@ -52,6 +64,7 @@ class CudaConvnetConv2DLayer(object):
 
         self.filter_shape = (n_channels, filter_size, filter_size, n_filters)
 
+        self.trainable = trainable
         self.W = layers.shared_single(4) # theano.shared(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
 
         if self.untie_biases:
@@ -101,7 +114,17 @@ class CudaConvnetConv2DLayer(object):
         return self.nonlinearity(conved)
 
 class CudaConvnetConv2DNoBiasLayer(object):
-    def __init__(self, input_layer, n_filters, filter_size, weights_std, stride=1, nonlinearity=layers.rectify, dropout=0., partial_sum=None, pad=0):
+    def __init__(self, 
+                 input_layer, 
+                 n_filters, 
+                 filter_size, 
+                 weights_std, 
+                 stride=1, 
+                 nonlinearity=layers.rectify, 
+                 dropout=0., 
+                 partial_sum=None, 
+                 pad=0,
+                 trainable=True):
         """
         Only the valid border mode is supported.
 
@@ -123,6 +146,7 @@ class CudaConvnetConv2DNoBiasLayer(object):
 
         self.filter_shape = (n_channels, filter_size, filter_size, n_filters)
 
+        self.trainable = trainable
         self.W = layers.shared_single(4) # theano.shared(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
 
         self.params = [self.W]
@@ -167,7 +191,8 @@ class ACudaConvnetConv2DLayer(CudaConvnetConv2DLayer):
                  dropout=0.,
                  partial_sum=None,
                  pad=0,
-                 untie_biases=False):
+                 untie_biases=False,
+                 trainable=True):
         self.alpha = theano.shared(np.array(0.0, dtype=theano.config.floatX))
         super(ACudaConvnetConv2DLayer, self).__init__(input_layer,
                                                       n_filters,
@@ -179,7 +204,8 @@ class ACudaConvnetConv2DLayer(CudaConvnetConv2DLayer):
                                                       dropout=dropout,
                                                       partial_sum=partial_sum,
                                                       pad=pad,
-                                                      untie_biases=untie_biases)
+                                                      untie_biases=untie_biases,
+                                                      trainable=trainable)
 
     def output(self, input=None, dropout_active=True, *args, **kwargs):
         if input == None:
@@ -202,104 +228,11 @@ class ACudaConvnetConv2DLayer(CudaConvnetConv2DLayer):
 
         return self.nonlinearity(conved, self.alpha)
 
-# class CudaConvnetDeconv2DLayer(object):
-#     def __init__(self,
-#                  input_layer,
-#                  n_channels,
-#                  filter_size,
-#                  weights_std,
-#                  init_bias_value,
-#                  stride=1,
-#                  nonlinearity=layers.rectify,
-#                  dropout=0.,
-#                  partial_sum=None,
-#                  pad=0,
-#                  untie_biases=False,
-#                  shape=None):
-#         """
-#         Only the valid border mode is supported.
-
-#         n_filters should be a multiple of 16
-#         """
-#         self.input_layer = input_layer
-#         self.input_shape = self.input_layer.get_output_shape()
-#         n_filters = self.input_shape[0]
-
-#         self.n_channels = n_channels
-#         self.n_filters = n_filters
-#         self.filter_size = filter_size
-#         self.weights_std = np.float32(weights_std)
-#         self.init_bias_value = np.float32(init_bias_value)
-#         self.stride = stride
-#         self.nonlinearity = nonlinearity
-#         self.dropout = dropout
-#         self.partial_sum = partial_sum
-#         self.pad = pad
-#         self.untie_biases = untie_biases
-#         self.shape = shape
-#         # if untie_biases == True, each position in the output map has its own bias (as opposed to having the same bias everywhere for a given filter)
-#         self.mb_size = self.input_layer.mb_size
-
-#         #self.filter_shape = (self.input_shape[0], filter_size, filter_size, n_filters)
-#         self.filter_shape = (n_channels, filter_size, filter_size, n_filters)
-
-#         self.W = layers.shared_single(4) # theano.shared(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
-
-#         if self.untie_biases:
-#             self.b = layers.shared_single(3)
-#         else:
-#             self.b = layers.shared_single(1) # theano.shared(np.ones(n_filters).astype(np.float32) * self.init_bias_value)
-
-#         self.params = [self.W, self.b]
-#         self.bias_params = [self.b]
-#         self.reset_params()
-
-#         self.image_acts_op = ImageActs(stride=self.stride, partial_sum=self.partial_sum, pad=self.pad)
-
-#     def reset_params(self):
-#         self.W.set_value(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
-
-#         if self.untie_biases:
-#             self.b.set_value(np.ones(self.get_output_shape()[:3]).astype(np.float32) * self.init_bias_value)
-#         else:
-#             self.b.set_value(np.ones(self.n_filters).astype(np.float32) * self.init_bias_value)
-
-#     def get_output_shape(self):
-#         if self.stride == 1:
-#             output_width = self.input_shape[1]*self.stride + self.filter_size - self.stride - 2 * self.pad
-#             output_height = self.input_shape[2]*self.stride + self.filter_size - self.stride - 2 * self.pad
-#         else:
-#             output_width, output_height = self.shape
-#         output_shape = (self.n_channels, output_width, output_height, self.mb_size)
-#         return output_shape
-
-#     def output(self, input=None, dropout_active=True, *args, **kwargs):
-#         if input == None:
-#             input = self.input_layer.output(dropout_active=dropout_active, *args, **kwargs)
-
-#         if self.untie_biases:
-#             input -= self.b.dimshuffle(0, 1, 2, 'x')
-#         else:
-#             input -= self.b.dimshuffle(0, 'x', 'x', 'x')
-
-#         if dropout_active and (self.dropout > 0.):
-#             retain_prob = 1 - self.dropout
-#             mask = layers.srng.binomial(input.shape, p=retain_prob, dtype='int32').astype('float32')
-#                 # apply the input mask and rescale the input accordingly. By doing this it's no longer necessary to rescale the weights at test time.
-#             input = input / retain_prob * mask
-
-#         contiguous_input = gpu_contiguous(input)
-#         contiguous_filters = gpu_contiguous(self.W)
-#         if self.stride==1:
-#             deconved = self.image_acts_op(contiguous_input, contiguous_filters)
-#         else:
-#             deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable(self.shape))
-#         return self.nonlinearity(deconved)
-
 class CudaConvnetDeconv2DLayer(object):
     def __init__(self,
                  input_layer,
-                 mirror_layer, nonlinearity=None):
+                 mirror_layer, 
+                 nonlinearity=None):
         """
         Only the valid border mode is supported.
 
@@ -333,6 +266,7 @@ class CudaConvnetDeconv2DLayer(object):
         #self.filter_shape = (self.input_shape[0], filter_size, filter_size, n_filters)
         self.filter_shape = mirror_layer.filter_shape
 
+        self.trainable = False
         self.W = mirror_layer.W
 
         self.b = mirror_layer.b
@@ -375,7 +309,8 @@ class CudaConvnetDeconv2DLayer(object):
 class CudaConvnetDeconv2DNoBiasLayer(object):
     def __init__(self,
                  input_layer,
-                 mirror_layer, nonlinearity=None):
+                 mirror_layer, 
+                 nonlinearity=None):
         """
         Only the valid border mode is supported.
 
@@ -406,6 +341,7 @@ class CudaConvnetDeconv2DNoBiasLayer(object):
         #self.filter_shape = (self.input_shape[0], filter_size, filter_size, n_filters)
         self.filter_shape = mirror_layer.filter_shape
 
+        self.trainable = False
         self.W = mirror_layer.W
 
         self.params = []
@@ -479,6 +415,7 @@ class CudaConvnetPooling2DLayer(object):
         self.pool_size = pool_size
         self.stride = stride if stride is not None else pool_size
         self.input_layer = input_layer
+        self.trainable = False
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
@@ -500,7 +437,6 @@ class CudaConvnetPooling2DLayer(object):
         return self.pool_op(contiguous_input)
 
 class CudaConvnetUnpooling2DLayer(object):
-#    def __init__(self, input_layer, pool_size, stride=None): # pool_size is an INTEGER here!
     def __init__(self, input_layer, pooling_layer):
         """
         pool_size is an INTEGER, not a tuple. We can only do square pooling windows.
@@ -513,6 +449,7 @@ class CudaConvnetUnpooling2DLayer(object):
         self.stride = pooling_layer.stride
         self.input_layer = input_layer
         self.pooling_layer = pooling_layer
+        self.trainable = False
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
@@ -536,8 +473,6 @@ class CudaConvnetUnpooling2DLayer(object):
         orig_input = self.pooling_layer.input_layer.output()
         return self.unpool_op(orig_input, max_out, input)
 
-
-
 class CudaConvnetStochasticPooling2DLayer(object):
     def __init__(self, input_layer, pool_size, stride=None): # pool_size is an INTEGER here!
         """
@@ -556,6 +491,7 @@ class CudaConvnetStochasticPooling2DLayer(object):
         self.pool_size = pool_size
         self.stride = stride if stride is not None else pool_size
         self.input_layer = input_layer
+        self.trainable = False
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
@@ -581,18 +517,19 @@ class CudaConvnetStochasticPooling2DLayer(object):
         else:
             return self.weighted_pool_op(contiguous_input)
 
-
-
-
-
-
 class CudaConvnetCrossMapNormLayer(object):
-    def __init__(self, input_layer, alpha=1e-4, beta=0.75, size_f=5, blocked=True):
+    def __init__(self, 
+                 input_layer, 
+                 alpha=1e-4, 
+                 beta=0.75, 
+                 size_f=5, 
+                 blocked=True):
         self.alpha = alpha
         self.beta = beta
         self.size_f = size_f
         self.blocked = blocked
         self.input_layer = input_layer
+        self.trainable = False
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
@@ -608,9 +545,6 @@ class CudaConvnetCrossMapNormLayer(object):
         contiguous_input = gpu_contiguous(input)
         return self.norm_op(contiguous_input)[0]
 
-
-
-
 class ShuffleC01BToBC01Layer(object):
     """
     This layer dimshuffles 4D input for interoperability between C01B and BC01 ops.
@@ -618,6 +552,7 @@ class ShuffleC01BToBC01Layer(object):
     """
     def __init__(self, input_layer):
         self.input_layer = input_layer
+        self.trainable = False
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
@@ -630,7 +565,6 @@ class ShuffleC01BToBC01Layer(object):
         input = self.input_layer.output(*args, **kwargs)
         return input.dimshuffle(3, 0, 1, 2)
 
-
 class ShuffleBC01ToC01BLayer(object):
     """
     This layer dimshuffles 4D input for interoperability between C01B and BC01 ops.
@@ -638,6 +572,7 @@ class ShuffleBC01ToC01BLayer(object):
     """
     def __init__(self, input_layer):
         self.input_layer = input_layer
+        self.trainable = False
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
@@ -650,11 +585,19 @@ class ShuffleBC01ToC01BLayer(object):
         input = self.input_layer.output(*args, **kwargs)
         return input.dimshuffle(1, 2, 3, 0)
 
-
-
-
 class CudaConvnetCircularConv2DLayer(object):
-    def __init__(self, input_layer, n_filters, filter_size, weights_std, init_bias_value, stride=1, nonlinearity=layers.rectify, dropout=0., partial_sum=None, untie_biases=False):
+    def __init__(self, 
+                 input_layer, 
+                 n_filters, 
+                 filter_size, 
+                 weights_std, 
+                 init_bias_value, 
+                 stride=1, 
+                 nonlinearity=layers.rectify, 
+                 dropout=0., 
+                 partial_sum=None, 
+                 untie_biases=False,
+                 trainable=True):
         """
         This is a convolution which is circular in the 0-direction, and valid in the 1-direction.
 
@@ -677,6 +620,7 @@ class CudaConvnetCircularConv2DLayer(object):
 
         self.filter_shape = (self.input_shape[0], filter_size, filter_size, n_filters)
 
+        self.trainable = trainable
         self.W = layers.shared_single(4) # theano.shared(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
 
         if self.untie_biases:
@@ -732,9 +676,6 @@ class CudaConvnetCircularConv2DLayer(object):
 
         return self.nonlinearity(conved)
 
-
-
-
 def shuffle_pool_unshuffle(input_layer, *args, **kwargs):
     """
     The Krizhevskhy max pooling layer only supports square input. This function provides
@@ -746,9 +687,6 @@ def shuffle_pool_unshuffle(input_layer, *args, **kwargs):
     l_c01b = ShuffleBC01ToC01BLayer(l_pool)
 
     return l_c01b
-
-
-
 
 class StochasticPoolingC01BLayer(object):
     """
@@ -771,6 +709,7 @@ class StochasticPoolingC01BLayer(object):
         self.input_shape = self.input_layer.get_output_shape()
         self.mb_size = self.input_layer.mb_size
 
+        self.trainable = False
         self.params = []
         self.bias_params = []
 

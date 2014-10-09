@@ -58,12 +58,16 @@ class UnsupervisedModel(AbstractModel):
     #        name, path, learning_rate=learning_rate)
 
     def _compile(self):
-        self.all_parameters_symbol = layers.all_parameters(
+        self.all_trainable_parameters_symbol = layers.all_trainable_parameters(
             self._get_output_layer())
+
+        self.all_save_parameters_symbol = layers.all_parameters(
+            self._get_output_layer())
+        
         # can switch to gen_updates_regular_momentum
         self.updates_symbol = layers.gen_updates_regular_momentum(
             self._get_cost_symbol(),
-            self.all_parameters_symbol,
+            self.all_trainable_parameters_symbol,
             learning_rate=self.learning_rate_symbol,
             momentum=0.9,
             weight_decay=1e-5)
@@ -104,12 +108,15 @@ class SupervisedModel(AbstractModel):
             name, path, learning_rate=learning_rate)
 
     def _compile(self):
-        self.all_parameters_symbol = layers.all_parameters(
+        self.all_trainable_parameters_symbol = layers.all_trainable_parameters(
+            self._get_output_layer())
+
+        self.all_save_parameters_symbol = layers.all_parameters(
             self._get_output_layer())
 
         self.updates_symbol = layers.gen_updates_regular_momentum(
             self._get_cost_symbol(),
-            self.all_parameters_symbol,
+            self.all_trainable_parameters_symbol,
             learning_rate=self.learning_rate_symbol,
             momentum=0.9,
             weight_decay=1e-5)

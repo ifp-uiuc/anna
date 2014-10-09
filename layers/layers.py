@@ -78,6 +78,20 @@ def all_parameters(layer):
     else:
         return layer.params + all_parameters(layer.input_layer)
 
+def all_trainable_parameters(layer):
+    """
+    Recursive function to gather all training parameters, starting from the output layer
+    """
+    if isinstance(layer, InputLayer) or isinstance(layer, Input2DLayer):
+        return []
+    elif isinstance(layer, ConcatenateLayer):
+        return sum([all_trainable_parameters(i) for i in layer.input_layers], [])
+    else:
+        if layer.trainable:
+            return layer.params + all_trainable_parameters(layer.input_layer)
+        else:
+            return [] + all_trainable_parameters(layer.input_layer)
+
 def all_bias_parameters(layer):
     """
     Recursive function to gather all bias parameters, starting from the output layer

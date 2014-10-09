@@ -17,7 +17,7 @@ from pylearn2.space import Conv2DSpace, VectorSpace, CompositeSpace
 from pylearn2.datasets import cifar10
 
 def load_checkpoint(model, checkpoint_path):
-    all_parameters = model.all_parameters_symbol
+    all_parameters = model.all_save_parameters_symbol
     f = open(checkpoint_path, 'rb')
     checkpoint = cPickle.load(f)
     f.close()
@@ -26,7 +26,7 @@ def load_checkpoint(model, checkpoint_path):
      in zip(all_parameters, checkpoint)]
 
 def save_checkpoint(model):
-    all_parameters = model.all_parameters_symbol
+    all_parameters = model.all_save_parameters_symbol
     checkpoint = [param.get_value() for param in all_parameters]
     tt = datetime.now()
     time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')

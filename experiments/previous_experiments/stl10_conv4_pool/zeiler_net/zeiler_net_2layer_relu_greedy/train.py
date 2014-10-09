@@ -50,11 +50,11 @@ print('Start')
 model = Model(sys.argv[1], sys.argv[2])
 #checkpoint = '/experiments/cifar_conv4_pool_relu_right/checkpoints/cifar_conv4_pool_relu_right-09m-23d-00h-37m-40s.pkl'
 #util.load_checkpoint(model, checkpoint)
-layer1_weight_checkpoint = '/code/DeconvNets/fastor/experiments/stl10_conv4_pool/zeiler_net/zeiler_net_2layer_relu_greedy/layer1_weights.pkl'
+layer1_weight_checkpoint = '/experiments/pre_trained_model_weights/zeiler_net_1layer_relu/layer1_weights.pkl'
 f = open(layer1_weight_checkpoint, 'rb')
 W1_init = cPickle.load(f)
 f.close()
-monitor = util.Monitor(model, save_steps=1000)
+monitor = util.Monitor(model, save_steps=100)
 
 print('Loading Data')
 data = numpy.load('/data/stl10_matlab/unsupervised.npy')
@@ -102,9 +102,11 @@ recon_visualizer = util.NormReconVisualizer(model, test_x_batch, steps=50)
 recon_visualizer.run()   
 filter_visualizer.run()
 
+print('Saving initial model checkpoint')
+util.save_checkpoint(model)
 #model.learning_rate_symbol.set_value(0.000005/10)
-count = 0
-print('Training Model')
+#count = 0
+print('Training model')
 for x_batch in train_iterator:
     x_batch = x_batch.transpose(1, 2, 3, 0)    
     monitor.start()
@@ -113,8 +115,8 @@ for x_batch in train_iterator:
     monitor.stop(error) 
     recon_visualizer.run()   
     filter_visualizer.run()
-    if (count != 0) and (count % 100) == 0:
-        lr = model.learning_rate_symbol.get_value()
-        model.learning_rate_symbol.set_value(numpy.float32(lr*0.5))
-        print('Learning Rate Now Equals: {}'.format(lr*0.5))
-    count+=1
+    #if (count != 0) and (count % 100) == 0:
+    #    lr = model.learning_rate_symbol.get_value()
+    #    model.learning_rate_symbol.set_value(numpy.float32(lr*0.5))
+    #    print('Learning Rate Now Equals: {}'.format(lr*0.5))
+    #count+=1

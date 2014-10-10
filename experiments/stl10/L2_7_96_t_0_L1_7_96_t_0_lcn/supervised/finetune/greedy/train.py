@@ -12,7 +12,7 @@ from model import SupervisedModel
 print('Start')
 model = SupervisedModel('experiment', './')
 checkpoint = checkpoints.supervised_greedy
-util.load_checkpoint(model, checkpoint)
+util.set_parameters_from_unsupervised_model(model, checkpoint)
 monitor = util.Monitor(model)
 
 # Loading STL-10 dataset

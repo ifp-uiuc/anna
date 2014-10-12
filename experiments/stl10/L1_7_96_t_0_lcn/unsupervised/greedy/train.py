@@ -1,3 +1,4 @@
+import os
 import sys
 sys.path.append('../..')
 
@@ -50,13 +51,16 @@ def conv_orthogonalize(w, k=1.0):
     return w
 
 print('Start')
+
+pid = os.getpid()
+print('PID: {}'.format(pid))
+f = open('pid', 'wb')
+f.write(str(pid)+'\n')
+f.close()
+
 model = UnsupervisedModel('experiment', './')
-checkpoint = checkpoints.unsupervised_greedy
-util.load_checkpoint(model, checkpoint)
 monitor = util.Monitor(model, save_steps=200)
 
-model.conv1.trainable = False
-model._compile()
 
 # Loading STL-10 dataset
 print('Loading Data')
@@ -77,13 +81,14 @@ test_iterator = test_dataset.iterator(mode='sequential', batch_size=128)
 # Note: Every batch must be normalized before use.
 normer = util.Normer(filter_size=7)
 
-
-# Orthogonalize second layer weights.
-W2 = model.conv2.W.get_value()
-W2 = conv_orthogonalize(W2)
-# Scale second layer weights.
-s=5.0
-model.conv2.W.set_value(W2*s)
+# Grab batch for patch extraction.
+x_batch = train_iterator.next()
+x_batch = x_batch.transpose(1, 2, 3, 0)
+x_batch = normer.run(x_batch)
+# Grab some patches to initialize weights.
+patch_grabber = util.PatchGrabber(96, 7)
+patches = patch_grabber.run(x_batch)*0.05
+model.conv1.W.set_value(patches)
 
 # Grab test data to give to NormReconVisualizer.
 test_x_batch = test_iterator.next()

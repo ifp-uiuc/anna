@@ -391,3 +391,21 @@ class WeightVisualizer(object):
         to_save = Image.fromarray(numpy.uint8(255*image_image))
         filename = os.path.join(self.path, '%s-%s.png' % (self.name, time_string))
         to_save.save(filename)
+
+def set_parameters_from_unsupervised_model(model, checkpoint):
+    
+    f = open(checkpoint, 'rb')
+    checkpoint_params = cPickle.load(f)
+    f.close()
+    
+    checkpoint_params_flipped = checkpoint_params[::-1]
+    
+    model_params = model.all_save_parameters_symbol
+    model_params_flipped = model_params[::-1]
+    
+    for i in range(len(checkpoint_params_flipped)):
+        if (list(checkpoint_params_flipped[i].shape) != 
+                list(model_params_flipped[i].shape.eval())):
+            raise Exception('Size mismatch!')
+         
+        model_params_flipped[i].set_value(checkpoint_params_flipped[i])

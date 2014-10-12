@@ -1,3 +1,4 @@
+import os
 import sys
 sys.path.append('../../..')
 
@@ -10,9 +11,16 @@ import checkpoints
 from model import SupervisedModel
 
 print('Start')
+
+pid = os.getpid()
+print('PID: {}'.format(pid))
+f = open('pid', 'wb')
+f.write(str(pid)+'\n')
+f.close()
+
 model = SupervisedModel('experiment', './')
 checkpoint = checkpoints.supervised_greedy
-util.load_checkpoint(model, checkpoint)
+util.set_parameters_from_unsupervised_model(model, checkpoint)
 monitor = util.Monitor(model)
 
 model.conv1.trainable = False

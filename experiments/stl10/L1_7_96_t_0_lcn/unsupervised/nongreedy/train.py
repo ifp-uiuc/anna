@@ -1,3 +1,4 @@
+import os
 import sys
 sys.path.append('../..')
 
@@ -49,9 +50,14 @@ def conv_orthogonalize(w, k=1.0):
     return w
 
 print('Start')
+
+pid = os.getpid()
+print('PID: {}'.format(pid))
+f = open('pid', 'wb')
+f.write(str(pid)+'\n')
+f.close()
+
 model = UnsupervisedModel('experiment', './')
-#checkpoint = '/experiments/cifar_conv4_pool_relu_right/checkpoints/cifar_conv4_pool_relu_right-09m-23d-00h-37m-40s.pkl'
-#util.load_checkpoint(model, checkpoint)
 monitor = util.Monitor(model, save_steps=200)
 
 # Loading STL-10 dataset
@@ -81,12 +87,6 @@ x_batch = normer.run(x_batch)
 patch_grabber = util.PatchGrabber(96, 7)
 patches = patch_grabber.run(x_batch)*0.05
 model.conv1.W.set_value(patches)
-# Orthogonalize second layer weights.
-W2 = model.conv2.W.get_value()
-W2 = conv_orthogonalize(W2)
-# Scale second layer weights.
-s=5.0
-model.conv2.W.set_value(W2*s)
 
 # Grab test data to give to NormReconVisualizer.
 test_x_batch = test_iterator.next()

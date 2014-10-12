@@ -1,3 +1,4 @@
+import os
 import sys
 sys.path.append('../../..')
 
@@ -9,6 +10,13 @@ from fastor.datasets import supervised_dataset
 from model import SupervisedModel
 
 print('Start')
+
+pid = os.getpid()
+print('PID: {}'.format(pid))
+f = open('pid', 'wb')
+f.write(str(pid)+'\n')
+f.close()
+
 model = SupervisedModel('experiment', './')
 monitor = util.Monitor(model)
 

@@ -1,3 +1,4 @@
+import os
 import sys
 sys.path.append('../..')
 
@@ -50,6 +51,13 @@ def conv_orthogonalize(w, k=1.0):
     return w
 
 print('Start')
+
+pid = os.getpid()
+print('PID: {}'.format(pid))
+f = open('pid', 'wb')
+f.write(str(pid)+'\n')
+f.close()
+
 model = UnsupervisedModel('experiment', './')
 checkpoint = checkpoints.unsupervised_greedy
 util.load_checkpoint(model, checkpoint)

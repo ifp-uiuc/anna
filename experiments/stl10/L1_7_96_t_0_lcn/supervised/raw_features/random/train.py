@@ -1,3 +1,4 @@
+import os
 import sys
 sys.path.append('../../..')
 
@@ -9,11 +10,17 @@ from fastor.datasets import supervised_dataset
 from model import SupervisedModel
 
 print('Start')
+
+pid = os.getpid()
+print('PID: {}'.format(pid))
+f = open('pid', 'wb')
+f.write(str(pid)+'\n')
+f.close()
+
 model = SupervisedModel('experiment', './')
 monitor = util.Monitor(model)
 
 model.conv1.trainable = False
-model.conv2.trainable = False
 model._compile()
 
 # Loading STL-10 dataset
@@ -46,7 +53,7 @@ print('Training Model')
 for x_batch, y_batch in train_iterator:        
     x_batch = x_batch.transpose(1, 2, 3, 0)   
     x_batch = normer.run(x_batch)
-    y_batch = numpy.int64(numpy.argmax(y_batch, axis=1))
+    # y_batch = numpy.int64(numpy.argmax(y_batch, axis=1))
     monitor.start()
     log_prob, accuracy = model.train(x_batch, y_batch-1)
     monitor.stop(1-accuracy) # monitor takes error instead of accuracy    
@@ -56,6 +63,6 @@ for x_batch, y_batch in train_iterator:
         x_test_batch, y_test_batch = test_iterator.next()
         x_test_batch = x_test_batch.transpose(1, 2, 3, 0)
         x_test_batch = normer.run(x_test_batch)
-        y_test_batch = numpy.int64(numpy.argmax(y_test_batch, axis=1))
+        # y_test_batch = numpy.int64(numpy.argmax(y_test_batch, axis=1))
         test_accuracy = model.eval(x_test_batch, y_test_batch-1)
         monitor.stop_test(1-test_accuracy)

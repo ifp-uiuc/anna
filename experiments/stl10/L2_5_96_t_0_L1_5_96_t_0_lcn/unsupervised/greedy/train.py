@@ -60,7 +60,7 @@ f.close()
 
 model = UnsupervisedModel('experiment', './')
 checkpoint = checkpoints.unsupervised_greedy
-util.load_checkpoint(model, checkpoint)
+util.set_parameters_from_unsupervised_model(model, checkpoint)
 monitor = util.Monitor(model, save_steps=200)
 
 model.conv1.trainable = False

@@ -814,3 +814,43 @@ class StochasticPoolingC01BLayer(object):
             output = output_flat.reshape(output_shape)
             
         return output
+
+
+class LcnLayer(object):
+    def __init__(self, input_layer, filter_size=3, num_channels=96, num_filters=96):
+        self.input_layer = input_layer
+        self.filter_size = filter_size
+        self.num_channels = num_channels
+        self.num_filters = num_filters
+
+        self.trainable = False
+        self.params = []
+        self.bias_params = []
+        self.mb_size = self.input_layer.mb_size
+    
+        self.conv_func = FilterActs(pad=self.filter_size/2)#(gpu_input, gpu_filter)
+        n = self.num_channels * self.filter_size * self.filter_size
+        self.w = numpy.float32(numpy.ones((self.num_channels, self.filter_size, self.filter_size, self.num_filters)))/n
+
+
+    def get_output_shape(self):
+        # output shape is the same as the input shape
+        return self.input_layer.get_output_shape()
+        
+    def output(self, *args, **kwargs):
+
+        input = self.input_layer.output(*args, **kwargs)
+        gpu_input = gpu_contiguous(input)
+        gpu_filter = gpu_contiguous(self.w)
+
+        mean_batch_symbol = self.conv_func(gpu_input, gpu_filter)
+        #mean_batch_symbol = T.tile(mean_batch_symbol[0,:,:,:][None, :, :, :], (self.num_channels, 1, 1, 1))
+        
+        diff_batch_symbol = (input - mean_batch_symbol)
+        gpu_diff_sq = gpu_contiguous(diff_batch_symbol**2)
+
+        std_batch_symbol = self.conv_func(gpu_diff_sq, gpu_filter)
+        #std_batch_symbol = T.tile(std_batch_symbol[0,:,:,:][None, :, :, :], (self.num_channels, 1, 1, 1))
+        norm_batch_symbol = diff_batch_symbol / (std_batch_symbol**(1/2))
+        
+        return norm_batch_symbol

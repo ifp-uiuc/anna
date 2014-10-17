@@ -830,7 +830,7 @@ class LcnLayer(object):
     
         self.conv_func = FilterActs(pad=self.filter_size/2)#(gpu_input, gpu_filter)
         n = self.num_channels * self.filter_size * self.filter_size
-        self.w = numpy.float32(numpy.ones((self.num_channels, self.filter_size, self.filter_size, self.num_filters)))/n
+        self.w = np.float32(np.ones((self.num_channels, self.filter_size, self.filter_size, self.num_filters)))/n
 
 
     def get_output_shape(self):

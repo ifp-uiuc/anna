@@ -372,6 +372,76 @@ class CudaConvnetDeconv2DNoBiasLayer(object):
             deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable((x, y)))
         return self.nonlinearity(deconved)
 
+class CudaConvnetDeconv2DNoBiasNormedLayer(object):
+    def __init__(self,
+                 input_layer,
+                 mirror_layer, 
+                 nonlinearity=None):
+        """
+        Only the valid border mode is supported.
+
+        n_filters should be a multiple of 16
+        """
+
+        self.mirror_layer = mirror_layer
+
+        self.input_layer = input_layer
+        self.input_shape = self.input_layer.get_output_shape()
+        n_filters = self.input_shape[0]
+
+        if nonlinearity:
+            self.nonlinearity = nonlinearity
+        else:
+            self.nonlinearity = mirror_layer.nonlinearity
+
+        self.n_channels = mirror_layer.n_channels
+        self.n_filters = mirror_layer.n_filters
+        self.filter_size = mirror_layer.filter_size
+        self.weights_std = mirror_layer.weights_std
+        self.stride = mirror_layer.stride
+        self.dropout = mirror_layer.dropout
+        self.partial_sum = mirror_layer.partial_sum
+        self.pad = mirror_layer.pad
+        self.mb_size = self.input_layer.mb_size
+
+        #self.filter_shape = (self.input_shape[0], filter_size, filter_size, n_filters)
+        self.filter_shape = mirror_layer.filter_shape
+
+        self.trainable = False
+        self.W = mirror_layer.W
+
+        self.params = []
+
+        self.image_acts_op = ImageActs(stride=self.stride, partial_sum=self.partial_sum, pad=self.pad)
+
+    def get_output_shape(self):
+        output_shape = self.mirror_layer.input_layer.get_output_shape()
+        # output_shape = (self.n_channels, output_width, output_height, self.mb_size)
+        return output_shape
+
+    def output(self, input=None, dropout_active=True, *args, **kwargs):
+        if input == None:
+            input = self.input_layer.output(dropout_active=dropout_active, *args, **kwargs)
+
+        if dropout_active and (self.dropout > 0.):
+            retain_prob = 1 - self.dropout
+            mask = layers.srng.binomial(input.shape, p=retain_prob, dtype='int32').astype('float32')
+                # apply the input mask and rescale the input accordingly. By doing this it's no longer necessary to rescale the weights at test time.
+            input = input / retain_prob * mask
+
+        contiguous_input = gpu_contiguous(input)
+        contiguous_filters = gpu_contiguous(self.W)
+        if self.stride==1:
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters)
+        else:
+            _, x, y, _ = self.get_output_shape()
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable((x, y)))
+
+        out = self.nonlinearity(deconved)
+        norm_input = T.sqrt(T.sum(self.mirror_layer.input_layer.output()**2, axis=(0,1,2)))[None, None, None, :]
+        norm_out = T.sqrt(T.sum(out**2, axis=(0,1,2)))[None, None, None, :]
+        return out/norm_out*norm_input
+
 class ACudaConvnetDeconv2DLayer(CudaConvnetDeconv2DLayer):
     def __init__(self,
                  input_layer,

@@ -297,12 +297,12 @@ def get_cifar_iterator(which_set, mode='sequential', batch_size=128, num_batches
     return iterator
 
 class Normer(object):
-    def __init__(self, filter_size=7):
+    def __init__(self, filter_size=7, num_channels=3):
         
         # magic numbers that make things work for stl10
-        self.filter_size = 7
+        self.filter_size = filter_size
         self.pad = self.filter_size/2 -1
-        self.num_channels = 3
+        self.num_channels = num_channels
         self.num_filters = 16
         input = T.ftensor4(name='input')
         filter = T.ftensor4(name='filter')
@@ -315,10 +315,10 @@ class Normer(object):
         
     def run(self, x_batch):
         mean_batch = self.conv_func(x_batch, self.w)
-        mean_batch = numpy.tile(numpy.array(mean_batch[0,:,:,:])[None, :, :], (3, 1, 1, 1))
+        mean_batch = numpy.tile(numpy.array(mean_batch[0,:,:,:])[None, :, :], (self.num_channels, 1, 1, 1))
         diff_batch = x_batch - mean_batch
         std_batch = self.conv_func(diff_batch**2, self.w)
-        std_batch = numpy.tile(numpy.array(std_batch[0,:,:,:])[None, :, :], (3, 1, 1, 1))
+        std_batch = numpy.tile(numpy.array(std_batch[0,:,:,:])[None, :, :], (self.num_channels, 1, 1, 1))
         norm_batch = diff_batch/(numpy.array(std_batch)**(1/2))
         return norm_batch
 

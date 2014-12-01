@@ -1,0 +1,110 @@
+## k = 0.736
+## k = 0.953
+(48, 96, 96, 128)
+(48, 96, 96, 128)
+(16, 96, 96, 128)
+Start
+PID: 5120
+Loading Data
+Training Model
+./
+Saving model checkpoint to: ./checkpoints/experiment-11m-10d-18h-53m-22s.pkl
+*0, train error: 63.56052, time: 0.67
+0, train error: 63.56052, time: 0.67
+10, train error: 39.83909, time: 0.63
+20, train error: 30.08683, time: 0.62
+30, train error: 26.86497, time: 0.62
+40, train error: 25.93519, time: 0.62
+*50, train error: 29.59250, time: 0.62
+50, train error: 25.23643, time: 0.62
+60, train error: 25.01012, time: 0.63
+70, train error: 24.65216, time: 0.62
+80, train error: 24.36169, time: 0.63
+90, train error: 24.25484, time: 0.62
+*100, train error: 24.49344, time: 0.63
+100, train error: 24.18839, time: 0.63
+110, train error: 24.45684, time: 0.63
+120, train error: 23.85956, time: 0.63
+130, train error: 23.99583, time: 0.63
+140, train error: 23.93739, time: 0.62
+*150, train error: 24.01483, time: 0.63
+150, train error: 23.82454, time: 0.63
+160, train error: 23.68891, time: 0.64
+170, train error: 23.35098, time: 0.64
+180, train error: 23.73207, time: 0.63
+190, train error: 23.52191, time: 0.63
+./
+Saving model checkpoint to: ./checkpoints/experiment-11m-10d-18h-55m-52s.pkl
+*200, train error: 23.51083, time: 0.63
+200, train error: 23.26027, time: 0.63
+210, train error: 23.67424, time: 0.63
+220, train error: 23.14528, time: 0.63
+230, train error: 23.07508, time: 0.64
+240, train error: 23.19045, time: 0.62
+*250, train error: 23.24029, time: 0.63
+250, train error: 23.11641, time: 0.62
+260, train error: 22.74121, time: 0.62
+270, train error: 22.61451, time: 0.62
+280, train error: 23.14278, time: 0.62
+290, train error: 22.48126, time: 0.62
+*300, train error: 22.68754, time: 0.62
+300, train error: 22.45798, time: 0.63
+310, train error: 22.66837, time: 0.67
+320, train error: 22.45251, time: 0.63
+330, train error: 22.07383, time: 0.62
+340, train error: 22.35953, time: 0.62
+*350, train error: 22.33459, time: 0.64
+350, train error: 22.11866, time: 0.63
+360, train error: 22.10288, time: 0.62
+370, train error: 22.02888, time: 0.62
+380, train error: 21.96148, time: 0.64
+390, train error: 21.93334, time: 0.63
+./
+Saving model checkpoint to: ./checkpoints/experiment-11m-10d-18h-58m-15s.pkl
+*400, train error: 22.03838, time: 0.63
+400, train error: 22.16533, time: 0.63
+410, train error: 21.70872, time: 0.63
+420, train error: 21.76306, time: 0.62
+430, train error: 21.60483, time: 0.64
+440, train error: 21.34288, time: 0.68
+*450, train error: 21.60761, time: 0.64
+450, train error: 21.61854, time: 0.63
+460, train error: 21.44994, time: 0.63
+470, train error: 21.34085, time: 0.64
+480, train error: 21.61162, time: 0.63
+490, train error: 21.43488, time: 0.63
+*500, train error: 21.44192, time: 0.63
+500, train error: 21.37232, time: 0.63
+510, train error: 21.57901, time: 0.64
+520, train error: 21.16961, time: 0.63
+530, train error: 21.25447, time: 0.66
+540, train error: 21.31857, time: 0.63
+*550, train error: 21.30960, time: 0.65
+550, train error: 21.22633, time: 0.68
+560, train error: 21.21113, time: 0.71
+570, train error: 21.01904, time: 0.79
+580, train error: 21.18202, time: 0.94
+590, train error: 21.20296, time: 0.86
+./
+Saving model checkpoint to: ./checkpoints/experiment-11m-10d-19h-00m-51s.pkl
+*600, train error: 21.10588, time: 0.83
+600, train error: 20.91427, time: 0.86
+610, train error: 21.06632, time: 1.00
+620, train error: 21.16934, time: 0.92
+630, train error: 20.92974, time: 0.90
+640, train error: 21.06043, time: 0.90
+*650, train error: 21.03641, time: 0.92
+650, train error: 20.95623, time: 0.86
+660, train error: 21.18026, time: 0.97
+670, train error: 21.07121, time: 0.94
+680, train error: 20.91735, time: 0.94
+690, train error: 20.99984, time: 0.97
+*700, train error: 20.98796, time: 0.95
+700, train error: 20.77115, time: 0.93
+710, train error: 21.04966, time: 0.88
+720, train error: 20.68035, time: 0.87
+730, train error: 20.59955, time: 0.92
+740, train error: 20.86318, time: 0.71
+*750, train error: 20.80809, time: 0.80
+750, train error: 20.84772, time: 0.63
+760, train error: 20.62023, time: 0.62

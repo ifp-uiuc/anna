@@ -306,6 +306,96 @@ class CudaConvnetDeconv2DLayer(object):
             deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable((x, y)))
         return self.nonlinearity(deconved)
 
+class CudaConvnetDeconvUntied2DLayer(object):
+    def __init__(self,
+                 input_layer,
+                 mirror_layer,
+                 nonlinearity=None):
+        """
+        Only the valid border mode is supported.
+
+        n_filters should be a multiple of 16
+        """
+
+        self.mirror_layer = mirror_layer
+
+        self.input_layer = input_layer
+        self.input_shape = self.input_layer.get_output_shape()
+        n_filters = self.input_shape[0]
+
+        if nonlinearity:
+            self.nonlinearity = nonlinearity
+        else:
+            self.nonlinearity = mirror_layer.nonlinearity
+
+        self.n_channels = mirror_layer.n_channels
+        self.n_filters = mirror_layer.n_filters
+        self.filter_size = mirror_layer.filter_size
+        self.weights_std = mirror_layer.weights_std
+        self.init_bias_value = mirror_layer.init_bias_value
+        self.stride = mirror_layer.stride
+        self.dropout = mirror_layer.dropout
+        self.partial_sum = mirror_layer.partial_sum
+        self.pad = mirror_layer.pad
+        self.untie_biases = mirror_layer.untie_biases
+        # if untie_biases == True, each position in the output map has its own bias (as opposed to having the same bias everywhere for a given filter)
+        self.mb_size = self.input_layer.mb_size
+
+        #self.filter_shape = (self.input_shape[0], filter_size, filter_size, n_filters)
+        self.filter_shape = mirror_layer.filter_shape
+
+        self.trainable = False
+        self.W = layers.shared_single(4)
+
+        if self.untie_biases:
+            self.b = layers.shared_single(3)
+        else:
+            self.b = layers.shared_single(1) # theano.shared(np.ones(n_filters).astype(np.float32) * self.init_bias_value)
+
+        # self.params = [self.W, self.b]
+        self.params = [self.W, self.b]
+        self.bias_params = [self.b]
+        self.reset_params()
+
+        self.image_acts_op = ImageActs(stride=self.stride, partial_sum=self.partial_sum, pad=self.pad)
+
+    def reset_params(self):
+        self.W.set_value(np.random.randn(*self.filter_shape).astype(np.float32) * self.weights_std)
+
+        if self.untie_biases:
+            self.b.set_value(np.ones(self.get_output_shape()[:3]).astype(np.float32) * self.init_bias_value)
+        else:
+            self.b.set_value(np.ones(self.n_filters).astype(np.float32) * self.init_bias_value)
+
+    def get_output_shape(self):
+        output_shape = self.mirror_layer.input_layer.get_output_shape()
+        # output_shape = (self.n_channels, output_width, output_height, self.mb_size)
+        return output_shape
+
+    def output(self, input=None, dropout_active=True, *args, **kwargs):
+        if input == None:
+            input = self.input_layer.output(dropout_active=dropout_active, *args, **kwargs)
+
+        if self.untie_biases:
+            input -= self.b.dimshuffle(0, 1, 2, 'x')
+        else:
+            input -= self.b.dimshuffle(0, 'x', 'x', 'x')
+
+        if dropout_active and (self.dropout > 0.):
+            retain_prob = 1 - self.dropout
+            mask = layers.srng.binomial(input.shape, p=retain_prob, dtype='int32').astype('float32')
+                # apply the input mask and rescale the input accordingly. By doing this it's no longer necessary to rescale the weights at test time.
+            input = input / retain_prob * mask
+
+        contiguous_input = gpu_contiguous(input)
+        contiguous_filters = gpu_contiguous(self.W)
+        if self.stride==1:
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters)
+        else:
+            _, x, y, _ = self.get_output_shape()
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters, as_tensor_variable((x, y)))
+        return self.nonlinearity(deconved)
+
 class CudaConvnetDeconv2DNoBiasLayer(object):
     def __init__(self,
                  input_layer,

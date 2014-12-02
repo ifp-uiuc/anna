@@ -100,53 +100,6 @@ class UnsupervisedModel(AbstractModel):
     def prediction(self, batch):
         return self.prediction_func(batch)
         
-class RegressionModel(AbstractModel):
-    def _compile(self):
-        self.all_trainable_parameters_symbol = layers.all_trainable_parameters(
-            self._get_output_layer())
-
-        self.all_save_parameters_symbol = layers.all_parameters(
-            self._get_output_layer())
-        
-        # can switch to gen_updates_regular_momentum
-        self.updates_symbol = layers.gen_updates_regular_momentum(
-            self._get_cost_symbol(),
-            self.all_trainable_parameters_symbol,
-            learning_rate=self.learning_rate_symbol,
-            momentum=0.9,
-            weight_decay=1e-5)
-
-        self.train_func = theano.function(
-            [self._get_input_symbol(), self._get_y_symbol()],
-            self._get_cost_symbol(),
-            updates=self.updates_symbol)
-
-        self.eval_func = theano.function(
-            [self._get_input_symbol(), self._get_y_symbol()],
-            self._get_cost_symbol())
-
-        self.prediction_func = theano.function(
-            [self._get_input_symbol()],
-            self._get_output_symbol())
-
-    def _get_cost_symbol(self):
-        y = self._get_y_symbol()
-        output = self._get_output_symbol()
-        cost = (T.sum(T.mean((output - y) ** 2, axis=(1,2,3)))/3)**(0.5)
-        return cost
-
-    def train(self, batch_x, batch_y):
-        return self.train_func(batch_x, batch_y)
-    
-    def eval(self, batch_x, batch_y):
-        return self.eval_func(batch_x, batch_y)
-
-    def prediction(self, batch_x):
-        return self.prediction_func(batch_x)
-
-    # New methods for RegressionModel
-    def _get_y_symbol(self):
-        return self.y.output()
 
 class SupervisedModel(AbstractModel):  
     def __init__(self, name, path, learning_rate=0.000001):

@@ -6,16 +6,16 @@ import numpy
 from model import SupervisedModel
 from fastor import util
 
-def compute_overall_accuracy(model, normer, mode=None):
+def compute_overall_accuracy(model, normer, which_set=None):
 
-    if not mode:
+    if not which_set:
         print('Please specify train or test set of cifar10')
         sys.exit(0)
 
-    if mode == 'train':
+    if which_set == 'train':
         #print('Training!!')
         num_samples = 50000
-    elif mode == 'test':
+    elif which_set == 'test':
         #print('Testing!!')
         num_samples = 10000
     else:
@@ -23,10 +23,12 @@ def compute_overall_accuracy(model, normer, mode=None):
         sys.exit(0)
 
 
-    iterator = util.get_cifar_iterator(mode, 
-                                      mode='even_sequential', 
-                                      batch_size=128,                                       
-                                      rescale=True)
+    iterator = util.get_cifar_iterator_reduced(which_set, 
+                                              mode='even_sequential', 
+                                              batch_size=128,                                       
+                                              rescale=True,
+                                              num_samples_per_class=100,
+                                              which_split=0)
 
     accuracy = numpy.zeros((num_samples/128))
     i = 0
@@ -48,8 +50,6 @@ if __name__ == "__main__":
     checkpoint_list = sorted(os.listdir(checkpoint_dir))
 
     model = SupervisedModel('xxx', './')
-    model.fc4.dropout = 0.0
-    model._compile()
     num_channels = model.conv1.filter_shape[0]
     filter_size = model.conv1.filter_shape[1]
     normer = util.Normer2(filter_size=filter_size, num_channels=num_channels)

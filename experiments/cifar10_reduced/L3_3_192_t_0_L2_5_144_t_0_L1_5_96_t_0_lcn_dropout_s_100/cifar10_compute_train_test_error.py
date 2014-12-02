@@ -44,6 +44,8 @@ if __name__ == "__main__":
 
     print('Loading Model Checkpoint')
     model = SupervisedModel('xxx', './')
+    model.fc4.dropout = 0.0
+    model._compile()
     checkpoint = sys.argv[1]
     util.load_checkpoint(model, checkpoint)
     normer = util.Normer2(filter_size=5, num_channels=3)

@@ -48,6 +48,8 @@ if __name__ == "__main__":
     checkpoint_list = sorted(os.listdir(checkpoint_dir))
 
     model = SupervisedModel('xxx', './')
+    model.fc4.dropout = 0.0
+    model._compile()
     num_channels = model.conv1.filter_shape[0]
     filter_size = model.conv1.filter_shape[1]
     normer = util.Normer2(filter_size=filter_size, num_channels=num_channels)

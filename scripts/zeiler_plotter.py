@@ -341,7 +341,7 @@ if __name__ == "__main__":
     train_dataset = unsupervised_dataset.UnsupervisedDataset(train_data)
     test_dataset = unsupervised_dataset.UnsupervisedDataset(test_data)
     #test_x_batch = test_x_batch.transpose(1, 2, 3, 0)
-    normer = util.Normer(filter_size=3)
+    normer = util.Normer(filter_size=7)
     print('Done')
 
     print('Computing top activations for each filter.')

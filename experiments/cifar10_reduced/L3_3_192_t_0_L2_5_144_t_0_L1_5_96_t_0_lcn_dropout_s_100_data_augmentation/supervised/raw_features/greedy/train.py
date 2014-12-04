@@ -45,7 +45,7 @@ test_iterator = util.get_cifar_iterator('test',
                                     rescale=True)
 
 normer = util.Normer2(filter_size=5, num_channels=3)
-augmenter = util.DataAugmenter(2, (96, 96))
+augmenter = util.DataAugmenter(2, (32, 32))
 
 print('Training Model')
 for x_batch, y_batch in train_iterator:

@@ -76,6 +76,7 @@ test_iterator = util.get_cifar_iterator('test',
                                     rescale=True)
 
 normer = util.Normer2(filter_size=5, num_channels=3)
+augmenter = util.DataAugmenter(2, (32, 32))
 
 # Grab batch for patch extraction.
 x_batch, y_batch = train_iterator.next()
@@ -98,6 +99,7 @@ model.conv3.W.set_value(W3*s)
 
 print('Training Model')
 for x_batch, y_batch in train_iterator:   
+    x_batch = augmenter.run(x_batch)
     x_batch = normer.run(x_batch)
     y_batch = numpy.int64(numpy.argmax(y_batch, axis=1))
     monitor.start()

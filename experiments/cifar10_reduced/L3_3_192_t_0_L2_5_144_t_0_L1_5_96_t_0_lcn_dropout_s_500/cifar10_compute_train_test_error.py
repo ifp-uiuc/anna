@@ -6,16 +6,16 @@ from fastor import util
 
 
 
-def compute_overall_accuracy(model, normer, which_set=None):
+def compute_overall_accuracy(model, normer, mode=None):
 
-    if not which_set:
+    if not mode:
         print('Please specify train or test set of cifar10')
         sys.exit(0)
 
-    if which_set == 'train':
+    if mode == 'train':
         print('Training!!')
         num_samples = 50000
-    elif which_set == 'test':
+    elif mode == 'test':
         print('Testing!!')
         num_samples = 10000
     else:
@@ -23,11 +23,11 @@ def compute_overall_accuracy(model, normer, which_set=None):
         sys.exit(0)
 
 
-    iterator = util.get_cifar_iterator_reduced(which_set, 
+    iterator = util.get_cifar_iterator_reduced(mode, 
                                             mode='even_sequential', 
                                             batch_size=128,                                       
                                             rescale=True,
-                                            num_samples_per_class=500,
+                                            num_samples_per_class=100,
                                             which_split=0)
 
     accuracy = numpy.zeros((num_samples/128))

@@ -13,7 +13,7 @@ from model import SupervisedModel
 
 print('Start')
 
-parser = argparse.ArgumentParser(prog='train_finetune_greedy', description='Script to train deconvolutional network in greedy fashion.')
+parser = argparse.ArgumentParser(prog='train_finetune_nongreedy', description='Script to train deconvolutional network in non-greedy fashion.')
 parser.add_argument("-s", "--split", default='0', help='Training split of stl10 to use. (0-9)')
 args = parser.parse_args()
 
@@ -28,8 +28,8 @@ f = open('pid_'+str(train_split), 'wb')
 f.write(str(pid)+'\n')
 f.close()
 
-model = SupervisedModel('experiment', './', learning_rate=1e-2)
-checkpoint = checkpoints.supervised_greedy
+model = SupervisedModel('experiment', './')
+checkpoint = checkpoints.supervised_nongreedy
 util.set_parameters_from_unsupervised_model(model, checkpoint)
 monitor = util.Monitor(model, checkpoint_directory='checkpoints_'+str(train_split))
 
@@ -58,12 +58,12 @@ test_iterator = test_dataset.iterator(
 # Create object to local contrast normalize a batch.
 # Note: Every batch must be normalized before use.
 normer = util.Normer2(filter_size=5, num_channels=3)
-augmeneter = util.DataAugmenter(16, (96, 96))
+augmenter = util.DataAugmenter(16, (96, 96))
 
 print('Training Model')
 for x_batch, y_batch in train_iterator:        
-    x_batch = x_batch.transpose(1, 2, 3, 0)  
-    x_batch = augmenter.run(x_batch) 
+    x_batch = x_batch.transpose(1, 2, 3, 0) 
+    x_batch = augmenter.run(x_batch)  
     x_batch = normer.run(x_batch)   
     # y_batch = numpy.int64(numpy.argmax(y_batch, axis=1))
     monitor.start()

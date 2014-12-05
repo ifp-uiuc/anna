@@ -7,6 +7,7 @@ import numpy
 from fastor import util
 from fastor.datasets import unsupervised_dataset
 
+import checkpoints
 from model import UnsupervisedModel
 
 
@@ -58,7 +59,13 @@ f.write(str(pid)+'\n')
 f.close()
 
 model = UnsupervisedModel('experiment', './')
+checkpoint = checkpoints.unsupervised_greedy
+util.set_parameters_from_unsupervised_model(model, checkpoint)
 monitor = util.Monitor(model, save_steps=200)
+
+model.conv1.trainable = False
+model.conv2.trainable = False
+model._compile()
 
 # Loading STL-10 dataset
 print('Loading Data')
@@ -71,29 +78,12 @@ test_data = data[90000::, :, :, :]
 
 train_dataset = unsupervised_dataset.UnsupervisedDataset(train_data)
 test_dataset = unsupervised_dataset.UnsupervisedDataset(test_data)
-train_iterator = train_dataset.iterator(
-    mode='random_uniform', batch_size=128, num_batches=100000)
+train_iterator = train_dataset.iterator(mode='random_uniform', batch_size=128, num_batches=100000)
 test_iterator = test_dataset.iterator(mode='sequential', batch_size=128)
 
 # Create object to local contrast normalize a batch.
 # Note: Every batch must be normalized before use.
 normer = util.Normer2(filter_size=5, num_channels=3)
-
-# Grab batch for patch extraction.
-x_batch = train_iterator.next()
-x_batch = x_batch.transpose(1, 2, 3, 0)
-x_batch = normer.run(x_batch)
-# Grab some patches to initialize weights.
-patch_grabber = util.PatchGrabber(96, 5)
-patches = patch_grabber.run(x_batch)*0.05
-model.conv1.W.set_value(patches)
-
-# Orthogonalize second layer weights.
-W2 = model.conv2.W.get_value()
-W2 = conv_orthogonalize(W2)
-# Scale second layer weights.
-s=5.0
-model.conv2.W.set_value(W2*s)
 
 # Orthogonalize third layer weights.
 W3 = model.conv3.W.get_value()
@@ -101,7 +91,6 @@ W3 = conv_orthogonalize(W3)
 # Scale third layer weights.
 s=5.0
 model.conv3.W.set_value(W3*s)
-
 
 # Grab test data to give to NormReconVisualizer.
 test_x_batch = test_iterator.next()

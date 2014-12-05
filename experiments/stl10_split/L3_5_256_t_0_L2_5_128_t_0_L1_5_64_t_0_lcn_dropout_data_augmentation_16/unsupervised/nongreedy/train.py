@@ -84,7 +84,7 @@ x_batch = train_iterator.next()
 x_batch = x_batch.transpose(1, 2, 3, 0)
 x_batch = normer.run(x_batch)
 # Grab some patches to initialize weights.
-patch_grabber = util.PatchGrabber(96, 5)
+patch_grabber = util.PatchGrabber(64, 5)
 patches = patch_grabber.run(x_batch)*0.05
 model.conv1.W.set_value(patches)
 

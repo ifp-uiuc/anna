@@ -8,6 +8,7 @@ from copy import deepcopy
 import cPickle
 
 import numpy
+from skimage import color
 
 import theano
 import theano.tensor as T
@@ -45,6 +46,35 @@ def rescale(data):
     data = data/2.0*255.0
     data[data > 255.0] = 255.0
     return data
+
+def color_augment_image(data):
+    image = data.transpose(1, 2, 0)
+    hsv = color.rgb2hsv(image)
+
+    # Contrast 2
+    s_factor1 = numpy.random.uniform(0.25, 4)
+    s_factor2 = numpy.random.uniform(0.7, 1.4)
+    s_factor3 = numpy.random.uniform(-0.1, 0.1)
+
+    hsv[:, :, 1] = (hsv[:, :, 1]**s_factor1)*s_factor2 + s_factor3
+
+    v_factor1 = numpy.random.uniform(0.25, 4)
+    v_factor2 = numpy.random.uniform(0.7, 1.4)
+    v_factor3 = numpy.random.uniform(-0.1, 0.1)
+
+    hsv[:, :, 2] = (hsv[:, :, 2]**v_factor1)*v_factor2 + v_factor3
+
+    # Color
+    h_factor = numpy.random.uniform(-0.1, 0.1)
+    hsv[:, :, 0] = hsv[:, :, 0] + h_factor
+
+    hsv[hsv < 0] = 0.0
+    hsv[hsv > 1] = 1.0
+
+    rgb = color.hsv2rgb(hsv)
+    
+    data_out = rgb.transpose(2, 0, 1)
+    return data_out
 
 class ReconVisualizer(object):
     def __init__(self, model, batch, steps=2000):
@@ -601,14 +631,29 @@ def set_parameters_from_unsupervised_model(model, checkpoint):
         model_params_flipped[i].set_value(checkpoint_params_flipped[i])
 
 class DataAugmenter(object):
-    def __init__(self, amount_pad, window_shape, flip=True):
+    def __init__(self, amount_pad, window_shape, flip=True, color_on=False):
         self.amount_pad = amount_pad
         self.window_shape = window_shape
         self.flip = flip        
+        self.color_on = color_on
         if len(window_shape) != 2:
             raise ValueError("window_shape should be length 2")
                     
     def run(self, x_batch):        
         x_batch_pad = _zero_pad(x_batch, self.amount_pad, axes=(1,2))
         x_batch_pad_aug = random_window_and_flip_c01b(x_batch_pad, self.window_shape, out=None, flip=self.flip)
-        return x_batch_pad_aug
+        if self.color_on:
+            x_batch_out = self._color_augment(x_batch_pad_aug)
+        else:
+            x_batch_out = x_batch_pad_aug
+        return x_batch_out
+
+    def _color_augment(self, x_batch):
+        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+        __, __, __, num_samples = x_batch.shape
+
+        for i in range(num_samples):
+            out_batch[:, :, :, i] = color_augment_image(x_batch[:, :, :, i])   
+        
+        out_batch *= 2
+        return out_batch

@@ -1,4 +1,4 @@
-unsupervised_experiments
+anna - artifical neural networks, anytime 
 ================
 
 This is a code repository to efficiently train a deconvolutional neural network with rectified linear units.

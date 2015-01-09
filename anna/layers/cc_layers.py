@@ -940,6 +940,7 @@ class CudaConvnetCircularConv2DLayer(object):
         return self.nonlinearity(conved)
 
 
+# TODO(tpaine) remove this layer
 def shuffle_pool_unshuffle(input_layer, *args, **kwargs):
     """
     The Krizhevskhy max pooling layer only supports square input. This function
@@ -954,6 +955,7 @@ def shuffle_pool_unshuffle(input_layer, *args, **kwargs):
     return l_c01b
 
 
+# TODO(tpaine) remove this layer
 class StochasticPoolingC01BLayer(object):
     """
     Stochastic pooling implemented in Theano using reshapes, since the Pylearn2
@@ -1021,6 +1023,7 @@ class StochasticPoolingC01BLayer(object):
         return output
 
 
+# TODO(tpaine) remove this layer
 class LcnLayer(object):
     def __init__(self, input_layer, filter_size=3, num_channels=96,
                  num_filters=96):

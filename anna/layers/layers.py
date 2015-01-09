@@ -907,6 +907,7 @@ class Conv2DLayer(object):
         return [(self.W, self.rescaled_weights(c))]
 
 
+# TODO(tpaine) remove this
 class MaxoutLayer(object):
     def __init__(self, input_layer, n_filters_per_unit, dropout=0.):
         self.n_filters_per_unit = n_filters_per_unit
@@ -1513,6 +1514,7 @@ class StridedConv2DLayer(object):
         return [(self.W, self.rescaled_weights(c))]
 
 
+# TODO(tpaine) remove this layer
 class Rot90SliceLayer(object):
     """
     This layer cuts 4 square-shaped parts of out of the input, rotates them
@@ -1552,6 +1554,7 @@ class Rot90SliceLayer(object):
         return T.concatenate([part0, part1, part2, part3], axis=0)
 
 
+# TODO(tpaine) remove this layer
 class Rot90MergeLayer(FlattenLayer):
     """
     This layer merges featuremaps that were separated by the Rot90SliceLayer
@@ -1580,6 +1583,7 @@ class Rot90MergeLayer(FlattenLayer):
         return input_r.transpose(1, 0, 2).reshape(self.get_output_shape())
 
 
+# TODO(tpaine) remove this layer
 class MultiRotSliceLayer(ConcatenateLayer):
     """
     This layer cuts 4 square-shaped parts of out of the input, rotates them 0,
@@ -1643,6 +1647,7 @@ class MultiRotSliceLayer(ConcatenateLayer):
         return T.concatenate(parts, axis=0)
 
 
+# TODO(tpaine) remove this layer
 class MultiRotMergeLayer(FlattenLayer):
     """
     This layer merges featuremaps that were separated by the MultiRotSliceLayer
@@ -1674,6 +1679,7 @@ class MultiRotMergeLayer(FlattenLayer):
         return input_r.transpose(1, 0, 2).reshape(self.get_output_shape())
 
 
+# TODO(tpaine) remove this
 def sparse_initialisation(n_inputs, n_outputs, sparsity=0.05, std=0.01):
     """
     sparsity: fraction of the weights to each output unit that should be
@@ -1691,6 +1697,7 @@ def sparse_initialisation(n_inputs, n_outputs, sparsity=0.05, std=0.01):
     return weights
 
 
+# TODO(tpaine) remove this layer
 class FeatureMaxPoolingLayer_old(object):
     """
     OLD implementation using T.maximum iteratively. This turns out to be slow.
@@ -1756,6 +1763,7 @@ class FeatureMaxPoolingLayer_old(object):
         return output
 
 
+# TODO(tpaine) remove this layer
 class FeatureMaxPoolingLayer(object):
     """
     Max pooling across feature maps. This can be used to implement maxout.
@@ -1832,6 +1840,7 @@ class FeatureMaxPoolingLayer(object):
         return output
 
 
+# TODO(tpaine) remove this
 def dump_params(l, **kwargs):
     """
     dump parameters from layer l and down into a file.

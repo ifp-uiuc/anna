@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 import theano
 import theano.tensor as T
 
-from fastor import util
-from fastor.datasets import unsupervised_dataset
+from anna import util
+from anna.datasets import unsupervised_dataset
 #from model import Model
 #from model_2layer import Model
 from model import UnsupervisedModel

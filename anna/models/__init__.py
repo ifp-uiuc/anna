@@ -3,7 +3,7 @@ import numpy
 import theano
 import theano.tensor as T  #TODO(tpaine) remove this dependency, can be done by factoring out the cost theano equation
 
-from fastor.layers import layers, cc_layers
+from anna.layers import layers, cc_layers
 
 theano.config.floatX = 'float32'
 

@@ -15,7 +15,7 @@ from anna.datasets import unsupervised_dataset
 #from model import Model
 #from model_2layer import Model
 from model import UnsupervisedModel
-from fastor.layers import layers
+from anna.layers import layers
 
 class ZeilerPlotter(object):
     def __init__(self, model, model_layer, pool_layer, dataset, normer):

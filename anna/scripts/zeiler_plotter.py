@@ -17,6 +17,7 @@ from anna.datasets import unsupervised_dataset
 from model import UnsupervisedModel
 from anna.layers import layers
 
+
 class ZeilerPlotter(object):
     def __init__(self, model, model_layer, pool_layer, dataset, normer):
         self.model = model
@@ -24,57 +25,66 @@ class ZeilerPlotter(object):
         self.model_layer = model_layer
         self.dataset = dataset
         self.normer = normer
-        max_act_func = theano.function([model.input.output()], T.max(pool_layer.output(), axis=(1,2)))
+        max_act_func = theano.function([model.input.output()],
+                                       T.max(pool_layer.output(), axis=(1, 2)))
         self.max_act_func = max_act_func
-    
+
     def run(self, image_index, filter_index):
-        image = self.dataset.X[image_index,:,:,:]
-        batch = numpy.tile(image[:,:,:,None], (1,1,1,128))
+        image = self.dataset.X[image_index, :, :, :]
+        batch = numpy.tile(image[:, :, :, None], (1, 1, 1, 128))
         batch = self.normer.run(batch)
-                        
-        W_masked = numpy.zeros(self.W.shape, dtype=numpy.float32)        
-        W_masked[:,:,:,filter_index] = self.W[:,:,:,filter_index]
+
+        W_masked = numpy.zeros(self.W.shape, dtype=numpy.float32)
+        W_masked[:, :, :, filter_index] = self.W[:, :, :, filter_index]
         self.model_layer.W.set_value(W_masked)
 
-        max_activations = numpy.array(self.max_act_func(batch))[filter_index,0]
+        max_activations = numpy.array(
+            self.max_act_func(batch))[filter_index, 0]
         print max_activations
 
         zeiler_batch = model.prediction(batch)
         #print zeiler_batch.shape
         self.model_layer.W.set_value(self.W)
-        return zeiler_batch[:,:,:,0] 
+        return zeiler_batch[:, :, :, 0]
+
 
 class ZeilerMaxPlotter(ZeilerPlotter):
-    def __init__(self, model, model_layer, pool_layer, dataset, normer):        
+    def __init__(self, model, model_layer, pool_layer, dataset, normer):
         insert_mask_layer(model, model_layer)
-        super(ZeilerMaxPlotter, self).__init__(model, model_layer, pool_layer, dataset, normer)
-        
-    def run(self, image_index, filter_index, max_val):        
-        model.max_mask_layer.max_val.set_value(max_val)         
+        super(ZeilerMaxPlotter, self).__init__(model,
+                                               model_layer,
+                                               pool_layer,
+                                               dataset,
+                                               normer)
+
+    def run(self, image_index, filter_index, max_val):
+        model.max_mask_layer.max_val.set_value(max_val)
         return super(ZeilerMaxPlotter, self).run(image_index, filter_index)
-        
+
+
 class MaxMaskLayer(object):
     def __init__(self, input_layer):
         self.input_layer = input_layer
         self.max_val = theano.shared(0.0)
         self.params = []
-        self.trainable = False ## NEW
-        
+        self.trainable = False  # NEW
+
     def get_output_shape(self):
         return self.input_layer.get_output_shape()
-        
+
     def output(self, input=None, *args, **kwargs):
-        if input == None:
+        if input is None:
             input = self.input_layer.output(*args, **kwargs)
-                    
+
         return input * T.eq(input, self.max_val)
 
+
 def get_patches(zeiler_image, max_image):
-    nonzeros = numpy.sum(zeiler_image==0, axis=2)
-    row_nonzeros = numpy.where(numpy.sum(nonzeros<3, axis=1))[0]
+    nonzeros = numpy.sum(zeiler_image == 0, axis=2)
+    row_nonzeros = numpy.where(numpy.sum(nonzeros < 3, axis=1))[0]
     row_start = row_nonzeros[0]
     row_end = row_nonzeros[-1]
-    col_nonzeros = numpy.where(numpy.sum(nonzeros<3, axis=0))[0]
+    col_nonzeros = numpy.where(numpy.sum(nonzeros < 3, axis=0))[0]
     col_start = col_nonzeros[0]
     col_end = col_nonzeros[-1]
     row_slice = slice(row_start, row_end)
@@ -84,11 +94,13 @@ def get_patches(zeiler_image, max_image):
     filter_patch = zeiler_image[row_slice, col_slice]
     return max_patch, filter_patch
 
+
 def zero_pad(image, size):
     diff = size - numpy.array(image.shape)
-    left =  diff/2
+    left = diff/2
     right = diff - left
     return numpy.pad(image, zip(left, right), mode='constant')
+
 
 def make_image_from_list(patches, num_rows, num_cols):
     count = 0
@@ -105,20 +117,24 @@ def make_image_from_list(patches, num_rows, num_cols):
     image_image = numpy.vstack(image_list)
     return image_image
 
+
 def insert_mask_layer(model, model_layer):
     all_layers = layers.all_layers(model.output)
     all_layers = all_layers[0:-1]
-    
-    next_layer = [layer for layer in all_layers if layer.input_layer == model_layer][0]
-    
+
+    next_layer = [layer for layer in all_layers
+                  if layer.input_layer == model_layer][0]
+
     model.max_mask_layer = MaxMaskLayer(model_layer)
     next_layer.input_layer = model.max_mask_layer
-    
+
     model._compile()
-    
+
+
 def get_max_activations_and_images(model, model_layer, dataset, normer):
-    
-    max_act_func = theano.function([model.input.output()], T.max(model_layer.output(), axis=(1,2)))
+
+    max_act_func = theano.function([model.input.output()],
+                                   T.max(model_layer.output(), axis=(1, 2)))
     iterator = dataset.iterator(mode='sequential', batch_size=128)
     acts_list = []
 
@@ -127,16 +143,18 @@ def get_max_activations_and_images(model, model_layer, dataset, normer):
         batch = normer.run(batch)
         max_acts_test = max_act_func(batch)
         acts_list.append(max_acts_test)
-    
+
     acts_array = numpy.hstack(acts_list)
     maximum_activation_values = numpy.max(acts_array, axis=1)
     maximum_image_indices = numpy.argmax(acts_array, axis=1)
-    
+
     return maximum_activation_values, maximum_image_indices
 
+
 def get_activations(model, model_layer, dataset, normer):
-    
-    max_act_func = theano.function([model.input.output()], T.max(model_layer.output(), axis=(1,2)))
+
+    max_act_func = theano.function([model.input.output()],
+                                   T.max(model_layer.output(), axis=(1, 2)))
     iterator = dataset.iterator(mode='sequential', batch_size=128)
     acts_list = []
 
@@ -145,14 +163,19 @@ def get_activations(model, model_layer, dataset, normer):
         batch = normer.run(batch)
         max_acts_test = max_act_func(batch)
         acts_list.append(max_acts_test)
-    
-    acts_array = numpy.hstack(acts_list)    
+
+    acts_array = numpy.hstack(acts_list)
     return acts_array
 
-def plot_top_activation(zeiler_plotter, output_path, best_acts, best_index, num_filters):
+
+def plot_top_activation(zeiler_plotter,
+                        output_path,
+                        best_acts,
+                        best_index,
+                        num_filters):
 
     output_path = os.path.join(output_path, 'top1')
-    if not os.path.exists(output_path):        
+    if not os.path.exists(output_path):
         os.makedirs(output_path)
 
     # Make a top 1 zeiler plot
@@ -165,31 +188,31 @@ def plot_top_activation(zeiler_plotter, output_path, best_acts, best_index, num_
         print i
         #num_filters = maximum_activation_values.shape[0]
         #W = model.conv1.W.get_value()
-        
+
         #for i in range(num_filters):
         #i = numpy.random.randint(num_filters)
         #filter_ = W[:,:,:,i].transpose(1,2,0)
         #filter_ -= filter_.min()
         #filter_ /= filter_.max()
-        
-        
-        image_index = maximum_image_indices[i]    
+
+        image_index = maximum_image_indices[i]
         max_val = maximum_activation_values[i]
-        
-        max_image = test_dataset.X[image_index,:,:,:]
-        batch = numpy.tile(max_image[:,:,:,None], (1,1,1,128))
-        max_image = normer.run(batch)[:,:,:,0].transpose(1,2,0)
+
+        max_image = test_dataset.X[image_index, :, :, :]
+        batch = numpy.tile(max_image[:, :, :, None], (1, 1, 1, 128))
+        max_image = normer.run(batch)[:, :, :, 0].transpose(1, 2, 0)
         max_image -= max_image.min()
         max_image /= max_image.max()
-        
+
         #zeiler_image = numpy.array(zeiler_plotter.run(image_index, i))
-        zeiler_image = numpy.array(zeiler_plotter.run(image_index, i, numpy.float32(max_val)))
-        zeiler_image = zeiler_image.transpose(1,2,0)
-        
+        zeiler_image = numpy.array(zeiler_plotter.run(image_index, i,
+                                                      numpy.float32(max_val)))
+        zeiler_image = zeiler_image.transpose(1, 2, 0)
+
         zeiler_image2 = deepcopy(zeiler_image)
         zeiler_image2 -= zeiler_image2.min()
         zeiler_image2 /= zeiler_image2.max()
-        
+
         # plt.subplot(2,2,1)
         # plt.imshow(max_image)
         # plt.subplot(2,2,2)
@@ -202,7 +225,8 @@ def plot_top_activation(zeiler_plotter, output_path, best_acts, best_index, num_
         #filter_patch /= filter_patch.max()
         image_patches.append(image_patch)
         filter_patches.append(filter_patch)
-        # plt.suptitle('Filter: {} -- Image: {} -- Max Value: {}'.format(i, image_index, maximum_activation_values[i]))
+        # plt.suptitle('Filter: {} -- Image: {} -- Max Value: {}'
+        # .format(i, image_index, maximum_activation_values[i]))
         # plt.show()
 
     image_image = make_image_from_list(image_patches, num_filters/16, 16)
@@ -212,7 +236,7 @@ def plot_top_activation(zeiler_plotter, output_path, best_acts, best_index, num_
 
     to_save = Image.fromarray(numpy.uint8(255*image_image))
     filename = 'all_patches.jpeg'
-    filepath = os.path.join(output_path, filename)        
+    filepath = os.path.join(output_path, filename)
     to_save.save(filepath)
 
     to_save = Image.fromarray(numpy.uint8(255*filter_image))
@@ -224,10 +248,15 @@ def plot_top_activation(zeiler_plotter, output_path, best_acts, best_index, num_
     #plt.subplot(2,1,2)
     #plt.imshow(filter_image)
 
-def plot_top_25_activations(zeiler_plotter, output_path, best_acts, best_index, num_filters):
+
+def plot_top_25_activations(zeiler_plotter,
+                            output_path,
+                            best_acts,
+                            best_index,
+                            num_filters):
 
     output_path = os.path.join(output_path, 'top25')
-    if not os.path.exists(output_path):        
+    if not os.path.exists(output_path):
         os.makedirs(output_path)
 
     # Make a top n zeiler plot
@@ -237,34 +266,37 @@ def plot_top_25_activations(zeiler_plotter, output_path, best_acts, best_index, 
         filter_patches = []
         top10_acts = best_acts[i, -n::][::-1]
         top10_index = best_index[i, -n::][::-1]
-        
+
         print i
-        
+
         for top_n in range(n):
             image_index = top10_index[top_n]
             max_val = top10_acts[top_n]
             print max_val
-            
+
             # Given an image_index, get an image
             #max_image = test_dataset.X[image_index,:,:,:]
-            max_image = zeiler_plotter.dataset.X[image_index,:,:,:]
-            batch = numpy.tile(max_image[:,:,:,None], (1,1,1,128))
+            max_image = zeiler_plotter.dataset.X[image_index, :, :, :]
+            batch = numpy.tile(max_image[:, :, :, None], (1, 1, 1, 128))
             #max_image = normer.run(batch)[:,:,:,0].transpose(1,2,0)
-            max_image = zeiler_plotter.normer.run(batch)[:,:,:,0].transpose(1,2,0)
+            max_image = zeiler_plotter.normer.run(
+                batch)[:, :, :, 0].transpose(1, 2, 0)
             max_image -= max_image.min()
             max_image /= max_image.max()
-            
+
             # Given an image_index, and a max_val, get a recon
-            zeiler_image = numpy.array(zeiler_plotter.run(image_index, i, numpy.float32(max_val)))
-            zeiler_image = zeiler_image.transpose(1,2,0)
-            
+            zeiler_image = numpy.array(zeiler_plotter.run(
+                image_index, i, numpy.float32(max_val)))
+            zeiler_image = zeiler_image.transpose(1, 2, 0)
+
             zeiler_image2 = deepcopy(zeiler_image)
             zeiler_image2 -= zeiler_image2.min()
             zeiler_image2 /= zeiler_image2.max()
-            
+
             # Grab the patches
             try:
-                image_patch, filter_patch = get_patches(zeiler_image, max_image)
+                image_patch, filter_patch = get_patches(zeiler_image,
+                                                        max_image)
             except:
                 print 'oops'
                 image_patch = numpy.zeros((19, 19, 3))
@@ -273,7 +305,7 @@ def plot_top_25_activations(zeiler_plotter, output_path, best_acts, best_index, 
             filter_patch /= filter_patch.max()
             image_patches.append(image_patch)
             filter_patches.append(filter_patch)
-            
+
         image_image = make_image_from_list(image_patches, 5, 5)
         filter_image = make_image_from_list(filter_patches, 5, 5)
         filter_image -= filter_image.min()
@@ -281,7 +313,7 @@ def plot_top_25_activations(zeiler_plotter, output_path, best_acts, best_index, 
 
         to_save = Image.fromarray(numpy.uint8(255*image_image))
         filename = 'image-%02d.jpeg' % i
-        filepath = os.path.join(output_path, filename)        
+        filepath = os.path.join(output_path, filename)
         to_save.save(filepath)
 
         to_save = Image.fromarray(numpy.uint8(255*filter_image))
@@ -294,11 +326,12 @@ if __name__ == "__main__":
     # Note: This script can only visualize the inner-most encoding
     #       layer of the neural network.
 
-
     # Parse Command Line Arguments
-    parser = argparse.ArgumentParser(prog='zeiler_plotter', description='Script to make Zeiler plots.')
+    parser = argparse.ArgumentParser(prog='zeiler_plotter', description=
+                                     'Script to make Zeiler plots.')
     parser.add_argument('weight_layer', help='Layer to extract weight matrix.')
-    parser.add_argument('feature_layer', help='Layer whose features will be masked and backpropogated to input space.')
+    parser.add_argument('feature_layer', help='Layer whose features will be '
+                        'masked and backpropogated to input space.')
     parser.add_argument('checkpoint', help='Path to checkpoint File.')
     parser.add_argument('output_path', help='Path to folder to save results.')
     args = parser.parse_args()
@@ -352,10 +385,12 @@ if __name__ == "__main__":
     print numpy.max(acts_array, axis=1)
 
     num_filters = acts_array.shape[0]
-    zeiler_plotter = ZeilerMaxPlotter(model, weight_layer, feature_layer, test_dataset, normer)
+    zeiler_plotter = ZeilerMaxPlotter(model, weight_layer, feature_layer,
+                                      test_dataset, normer)
 
     print('Extracting top 25 activations for each filter.')
-    plot_top_25_activations(zeiler_plotter, output_path, best_acts, best_index, num_filters)    
+    plot_top_25_activations(zeiler_plotter, output_path, best_acts, best_index,
+                            num_filters)
     print('Extracting top activation for each filter.')
-    plot_top_activation(zeiler_plotter, output_path, best_acts, best_index, num_filters)
-
+    plot_top_activation(zeiler_plotter, output_path, best_acts, best_index,
+                        num_filters)

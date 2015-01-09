@@ -16,7 +16,7 @@ if __name__ == "__main__":
     parser.add_argument('train_path',
                         help='Path to model.py and train.py files')
     parser.add_argument('out_path', help='Path to to folder to save results')
-    #parser.add_argument('-v', action='store_true', help='Verbose')
+    # parser.add_argument('-v', action='store_true', help='Verbose')
     args = parser.parse_args()
 
     print('\n========================================================')

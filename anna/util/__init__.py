@@ -161,7 +161,7 @@ class NormReconVisualizer(object):
             recon2 = deepcopy(recon)*1.0
 
             recon_mask = (numpy.sum(recon == 0.0, axis=2) < 3)
-            #recon_mask = 255*(numpy.tile(recon_mask[:,:,None],(1,1,3)))
+            # recon_mask = 255*(numpy.tile(recon_mask[:,:,None],(1,1,3)))
             recon_mask = 255*(numpy.tile(recon_mask[:, :, None],
                                          (1, 1, image.shape[2])))
 
@@ -282,12 +282,12 @@ class FilterVisualizer(object):
                 W0 -= W0.min()
                 W0 /= W0.max()
 
-                #W0[:,:,0] -= W0[:,:,0].min()
-                #W0[:,:,0] /= W0[:,:,0].max()
-                #W0[:,:,1] -= W0[:,:,1].min()
-                #W0[:,:,1] /= W0[:,:,1].max()
-                #W0[:,:,2] -= W0[:,:,2].min()
-                #W0[:,:,2] /= W0[:,:,2].max()
+                # W0[:,:,0] -= W0[:,:,0].min()
+                # W0[:,:,0] /= W0[:,:,0].max()
+                # W0[:,:,1] -= W0[:,:,1].min()
+                # W0[:,:,1] /= W0[:,:,1].max()
+                # W0[:,:,2] -= W0[:,:,2].min()
+                # W0[:,:,2] /= W0[:,:,2].max()
                 row_list.append(W0)
                 row_list.append(bar)
                 k += 1
@@ -341,12 +341,12 @@ class FilterVisualizerGrayscale(object):
                 W0 /= W0.max()
                 W0 = numpy.tile(W0, (1, 1, 3))
 
-                #W0[:,:,0] -= W0[:,:,0].min()
-                #W0[:,:,0] /= W0[:,:,0].max()
-                #W0[:,:,1] -= W0[:,:,1].min()
-                #W0[:,:,1] /= W0[:,:,1].max()
-                #W0[:,:,2] -= W0[:,:,2].min()
-                #W0[:,:,2] /= W0[:,:,2].max()
+                # W0[:,:,0] -= W0[:,:,0].min()
+                # W0[:,:,0] /= W0[:,:,0].max()
+                # W0[:,:,1] -= W0[:,:,1].min()
+                # W0[:,:,1] /= W0[:,:,1].max()
+                # W0[:,:,2] -= W0[:,:,2].min()
+                # W0[:,:,2] /= W0[:,:,2].max()
                 row_list.append(W0)
                 row_list.append(bar)
                 k += 1
@@ -475,8 +475,8 @@ def get_cifar_iterator(which_set,
                               axes=axes)
 
     input_convspace = Conv2DSpace(shape=(32, 32), num_channels=3, axes=axes)
-    #target_space = VectorSpace(dim=10)
-    #data_specs = (input_convspace,'features')
+    # target_space = VectorSpace(dim=10)
+    # data_specs = (input_convspace,'features')
 
     target_space = VectorSpace(dim=10)
     data_specs = (CompositeSpace((input_convspace, target_space)), ("features",
@@ -529,8 +529,8 @@ def get_cifar_iterator_reduced(which_set,
         raise Exception('Please specify either train or test.')
 
     input_convspace = Conv2DSpace(shape=(32, 32), num_channels=3, axes=axes)
-    #target_space = VectorSpace(dim=10)
-    #data_specs = (input_convspace,'features')
+    # target_space = VectorSpace(dim=10)
+    # data_specs = (input_convspace,'features')
 
     target_space = VectorSpace(dim=10)
     data_specs = (CompositeSpace((input_convspace, target_space)), ("features",

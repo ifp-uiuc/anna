@@ -1,8 +1,9 @@
 import numpy
 
 import theano
-import theano.tensor as T  # TODO(tpaine) remove this dependency, can be done
-                           # by factoring out the cost theano equation
+import theano.tensor as T
+# TODO(tpaine) remove this dependency, can be done
+# by factoring out the cost theano equation
 
 from anna.layers import layers, cc_layers
 
@@ -10,7 +11,7 @@ theano.config.floatX = 'float32'
 
 
 class AbstractModel(object):
-## Abstract Model
+    # Abstract Model
 
     def __init__(self, name, path, learning_rate=0.000001):
         self.name = name
@@ -55,7 +56,7 @@ class AbstractModel(object):
 
 
 class UnsupervisedModel(AbstractModel):
-    #def __init__(self, name, path, learning_rate=0.000001):
+    # def __init__(self, name, path, learning_rate=0.000001):
     #    super(UnsupervisedModel, self).__init__(
     #        name, path, learning_rate=learning_rate)
 

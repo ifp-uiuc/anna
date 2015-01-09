@@ -13,7 +13,7 @@ class SupervisedDataset(object):
     # Class to construct a supervised dataset
 
     def __init__(self, X, y):  # , batch_size=None, iter_type=None):
-        #print('Dataset loaded with size: {}'.format(X.shape))
+        # print('Dataset loaded with size: {}'.format(X.shape))
         self.X = X
         self.n_samples = X.shape[0]
         self.n_channels = X.shape[1]
@@ -84,8 +84,8 @@ class SupervisedDataset(object):
                         raise ValueError("dataset of %d examples can only "
                                          "provide %d batches with batch_size "
                                          " %d, but %d batches were requested" %
-                                        (self.n_samples, max_num_batches,
-                                         batch_size, num_batches))
+                                         (self.n_samples, max_num_batches,
+                                          batch_size, num_batches))
                 else:
                     # Floor Function chosen to ensure that uneven segment
                     # (i.e. "runt") is ignored
@@ -124,9 +124,9 @@ class BasicIterator(object):
         self.batch_size = batch_size
         self.num_batches = num_batches
         self.num_samples = num_samples
-        #print('Batch Size: {}'.format(batch_size))
-        #print('Num Batches: {}'.format(num_batches))
-        #print('Num Samples: {}'.format(num_samples))
+        # print('Batch Size: {}'.format(batch_size))
+        # print('Num Batches: {}'.format(num_batches))
+        # print('Num Samples: {}'.format(num_samples))
 
         # Batch Counter
         self.batch_count = 0
@@ -152,7 +152,7 @@ class DatasetIteratorSequential(BasicIterator):
                  batch_size=None,
                  num_batches=None,
                  num_samples=None):
-        #print('Using Sequential Iterator')
+        # print('Using Sequential Iterator')
         super(DatasetIteratorSequential, self).__init__(X, y,
                                                         batch_size,
                                                         num_batches,
@@ -162,7 +162,7 @@ class DatasetIteratorSequential(BasicIterator):
         return self
 
     def next(self):
-        #print('In Dataset_Iter_Seq_Next')
+        # print('In Dataset_Iter_Seq_Next')
         if (self.batch_count >= self.num_batches or
            self.sample_count >= self.num_samples):
             raise StopIteration()
@@ -191,7 +191,7 @@ class DatasetIteratorRandomUniform(BasicIterator):
                  num_batches=None,
                  num_samples=None,
                  rng_seed=0):
-        #print('Using Random Uniform Iterator (with replacement)')
+        # print('Using Random Uniform Iterator (with replacement)')
         np.random.seed(rng_seed)
         super(DatasetIteratorRandomUniform, self).__init__(X, y, batch_size,
                                                            num_batches,
@@ -223,7 +223,7 @@ class DatasetIteratorRandomUniformNoRep(BasicIterator):
                  num_batches=None,
                  num_samples=None,
                  rng_seed=0):
-        #print('Using Random Uniform Iterator (w/o replacement)')
+        # print('Using Random Uniform Iterator (w/o replacement)')
         np.random.seed(rng_seed)
         self.remain_samples = np.arange(num_samples)
         super(DatasetIteratorRandomUniformNoRep, self).__init__(X, y,
@@ -248,13 +248,13 @@ class DatasetIteratorRandomUniformNoRep(BasicIterator):
 
 
 if __name__ == "__main__":
-    #print('Making Datset Object')
+    # print('Making Datset Object')
     X = np.zeros((1024, 3, 5, 5))
     y = np.zeros((1024,))
     d = SupervisedDataset(X, y)
-    #d.iterator(batch_size=128)
-    #d.iterator(mode='random_uniform', batch_size=128,
-    #           num_batches = 1000, rng_seed=10)
+    # d.iterator(batch_size=128)
+    # d.iterator(mode='random_uniform', batch_size=128,
+    #            num_batches = 1000, rng_seed=10)
     d.iterator(mode='random_uniform_no_rep', batch_size=128)
 
     for i, [b, b_l] in enumerate(d):

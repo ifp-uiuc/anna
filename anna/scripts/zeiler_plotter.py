@@ -12,8 +12,8 @@ import theano.tensor as T
 
 from anna import util
 from anna.datasets import unsupervised_dataset
-#from model import Model
-#from model_2layer import Model
+# from model import Model
+# from model_2layer import Model
 from model import UnsupervisedModel
 from anna.layers import layers
 
@@ -43,7 +43,7 @@ class ZeilerPlotter(object):
         print max_activations
 
         zeiler_batch = model.prediction(batch)
-        #print zeiler_batch.shape
+        # print zeiler_batch.shape
         self.model_layer.W.set_value(self.W)
         return zeiler_batch[:, :, :, 0]
 
@@ -186,14 +186,14 @@ def plot_top_activation(zeiler_plotter,
     filter_patches = []
     for i in range(num_filters):
         print i
-        #num_filters = maximum_activation_values.shape[0]
-        #W = model.conv1.W.get_value()
+        # num_filters = maximum_activation_values.shape[0]
+        # W = model.conv1.W.get_value()
 
-        #for i in range(num_filters):
-        #i = numpy.random.randint(num_filters)
-        #filter_ = W[:,:,:,i].transpose(1,2,0)
-        #filter_ -= filter_.min()
-        #filter_ /= filter_.max()
+        # for i in range(num_filters):
+        # i = numpy.random.randint(num_filters)
+        # filter_ = W[:,:,:,i].transpose(1,2,0)
+        # filter_ -= filter_.min()
+        # filter_ /= filter_.max()
 
         image_index = maximum_image_indices[i]
         max_val = maximum_activation_values[i]
@@ -204,7 +204,7 @@ def plot_top_activation(zeiler_plotter,
         max_image -= max_image.min()
         max_image /= max_image.max()
 
-        #zeiler_image = numpy.array(zeiler_plotter.run(image_index, i))
+        # zeiler_image = numpy.array(zeiler_plotter.run(image_index, i))
         zeiler_image = numpy.array(zeiler_plotter.run(image_index, i,
                                                       numpy.float32(max_val)))
         zeiler_image = zeiler_image.transpose(1, 2, 0)
@@ -221,8 +221,8 @@ def plot_top_activation(zeiler_plotter,
         # plt.subplot(2,2,3)
         # plt.imshow(zeiler_image2)
         image_patch, filter_patch = get_patches(zeiler_image, max_image)
-        #filter_patch -= filter_patch.min()
-        #filter_patch /= filter_patch.max()
+        # filter_patch -= filter_patch.min()
+        # filter_patch /= filter_patch.max()
         image_patches.append(image_patch)
         filter_patches.append(filter_patch)
         # plt.suptitle('Filter: {} -- Image: {} -- Max Value: {}'
@@ -243,10 +243,10 @@ def plot_top_activation(zeiler_plotter,
     filename = 'all_recons.jpeg'
     filepath = os.path.join(output_path, filename)
     to_save.save(filepath)
-    #plt.subplot(2,1,1)
-    #plt.imshow(image_image)
-    #plt.subplot(2,1,2)
-    #plt.imshow(filter_image)
+    # plt.subplot(2,1,1)
+    # plt.imshow(image_image)
+    # plt.subplot(2,1,2)
+    # plt.imshow(filter_image)
 
 
 def plot_top_25_activations(zeiler_plotter,
@@ -275,10 +275,10 @@ def plot_top_25_activations(zeiler_plotter,
             print max_val
 
             # Given an image_index, get an image
-            #max_image = test_dataset.X[image_index,:,:,:]
+            # max_image = test_dataset.X[image_index,:,:,:]
             max_image = zeiler_plotter.dataset.X[image_index, :, :, :]
             batch = numpy.tile(max_image[:, :, :, None], (1, 1, 1, 128))
-            #max_image = normer.run(batch)[:,:,:,0].transpose(1,2,0)
+            # max_image = normer.run(batch)[:,:,:,0].transpose(1,2,0)
             max_image = zeiler_plotter.normer.run(
                 batch)[:, :, :, 0].transpose(1, 2, 0)
             max_image -= max_image.min()
@@ -327,8 +327,9 @@ if __name__ == "__main__":
     #       layer of the neural network.
 
     # Parse Command Line Arguments
-    parser = argparse.ArgumentParser(prog='zeiler_plotter', description=
-                                     'Script to make Zeiler plots.')
+    parser = argparse.ArgumentParser(
+        prog='zeiler_plotter',
+        description='Script to make Zeiler plots.')
     parser.add_argument('weight_layer', help='Layer to extract weight matrix.')
     parser.add_argument('feature_layer', help='Layer whose features will be '
                         'masked and backpropogated to input space.')
@@ -373,7 +374,7 @@ if __name__ == "__main__":
     test_data = data[90000::, :, :, :]
     train_dataset = unsupervised_dataset.UnsupervisedDataset(train_data)
     test_dataset = unsupervised_dataset.UnsupervisedDataset(test_data)
-    #test_x_batch = test_x_batch.transpose(1, 2, 3, 0)
+    # test_x_batch = test_x_batch.transpose(1, 2, 3, 0)
     normer = util.Normer(filter_size=7)
     print('Done')
 

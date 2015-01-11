@@ -506,8 +506,8 @@ def get_cifar_iterator_reduced(which_set,
                                which_split=0):
 
     if which_set == 'train':
-        reduced_dataset_path = '/data/CIFAR-10/reduced/cifar10_' +
-        str(num_samples_per_class)
+        reduced_dataset_path = '/data/CIFAR-10/reduced/cifar10_' + \
+            str(num_samples_per_class)
         reduced_dataset_file_path = os.path.join(reduced_dataset_path, 'split_'
                                                  + str(which_split)+'.pkl')
         if not os.path.exists(reduced_dataset_file_path):

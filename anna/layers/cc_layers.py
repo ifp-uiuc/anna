@@ -100,10 +100,10 @@ class CudaConvnetConv2DLayer(object):
                              * self.init_bias_value)
 
     def get_output_shape(self):
-        output_width = (self.input_shape[1] + 2 * self.pad - self.filter_size
-                        + self.stride) // self.stride
-        output_height = (self.input_shape[2] + 2 * self.pad - self.filter_size
-                         + self.stride) // self.stride
+        output_width = int(np.ceil((self.input_shape[1] + 2 * self.pad - self.filter_size
+                        + self.stride)*1.0 / self.stride))
+        output_height = int(np.ceil((self.input_shape[2] + 2 * self.pad - self.filter_size
+                         + self.stride)*1.0 / self.stride))
         output_shape = (self.n_filters, output_width, output_height,
                         self.mb_size)
         return output_shape
@@ -182,10 +182,10 @@ class CudaConvnetConv2DNoBiasLayer(object):
                          * self.weights_std)
 
     def get_output_shape(self):
-        output_width = (self.input_shape[1] + 2 * self.pad - self.filter_size
-                        + self.stride) // self.stride
-        output_height = (self.input_shape[2] + 2 * self.pad - self.filter_size
-                         + self.stride) // self.stride
+        output_width = int(np.ceil((self.input_shape[1] + 2 * self.pad - self.filter_size
+                        + self.stride)*1.0 / self.stride))
+        output_height = int(np.ceil((self.input_shape[2] + 2 * self.pad - self.filter_size
+                         + self.stride)*1.0 / self.stride))
         output_shape = (self.n_filters, output_width, output_height,
                         self.mb_size)
         return output_shape

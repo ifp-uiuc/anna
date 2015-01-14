@@ -1,13 +1,15 @@
-import numpy as np
+import sys
+import os
+import cPickle as pickle
+
+import numpy
 import theano.tensor as T
 import theano
+
 from theano.tensor.signal.conv import conv2d as sconv2d
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.nnet.conv import conv2d
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
-import sys
-import os
-import cPickle as pickle
 
 srng = RandomStreams()
 
@@ -18,52 +20,21 @@ sigmoid = T.nnet.sigmoid
 tanh = T.tanh
 
 
+def identity(x):
+    # To create a linear layer.
+    return x
+
+
 def rectify(x):
     return T.maximum(x, 0.0)
-
-
-def a_rectify(x, a):
-    return (1-a)*x + (a)*rectify(x)
 
 
 def trec(x):
     return x*(x > 1)
 
 
-def identity(x):
-    # To create a linear layer.
-    return x
-
-
 def softmax(x):
     return T.nnet.softmax(x)
-
-
-def compress(x, C=10000.0):
-    return T.log(1 + C * x ** 2)  # no binning matrix here of course
-
-
-def compress_abs(x, C=10000.0):
-    return T.log(1 + C * abs(x))
-
-
-class NoiseLayer(object):
-    def __init__(self, input_layer, avg=0.0, std=1.0):
-        self.input_layer = input_layer
-        self.avg = avg
-        self.std = std
-        self.mb_size = self.input_layer.mb_size
-        self.trainable = False
-        self.params = []
-
-    def get_output_shape(self):
-        return self.input_layer.get_output_shape()
-
-    def output(self, input=None, *args, **kwargs):
-        if input is None:
-            input = self.input_layer.output(*args, **kwargs)
-        return input + srng.normal(self.input_layer.output().shape,
-                                   avg=self.avg, std=self.std, nstreams=1)
 
 
 def all_layers(layer):
@@ -193,34 +164,6 @@ def gen_updates_nesterov_momentum(loss, all_parameters, learning_rate,
     return updates
 
 
-def gen_updates_nesterov_momentum_no_bias_decay(loss,
-                                                all_parameters,
-                                                all_bias_parameters,
-                                                learning_rate,
-                                                momentum,
-                                                weight_decay):
-    """
-    Nesterov momentum, but excluding the biases from the weight decay.
-    """
-    all_grads = [theano.grad(loss, param) for param in all_parameters]
-    updates = []
-    for param_i, grad_i in zip(all_parameters, all_grads):
-        mparam_i = theano.shared(param_i.get_value()*0.)
-        if param_i in all_bias_parameters:
-            full_grad = grad_i
-        else:
-            full_grad = grad_i + weight_decay * param_i
-        # new momemtum
-        v = momentum * mparam_i - learning_rate * full_grad
-        # new parameter values
-        w = param_i + momentum * v - learning_rate * full_grad
-        updates.append((mparam_i, v))
-        updates.append((param_i, w))
-    return updates
-
-gen_updates = gen_updates_nesterov_momentum
-
-
 def gen_updates_sgd(loss, all_parameters, learning_rate):
     all_grads = [theano.grad(loss, param) for param in all_parameters]
     updates = []
@@ -324,7 +267,25 @@ def shared_single(dim=2):
     Shortcut to create an undefined single precision Theano shared variable.
     """
     shp = tuple([1] * dim)
-    return theano.shared(np.zeros(shp, dtype='float32'))
+    return theano.shared(numpy.zeros(shp, dtype='float32'))
+
+
+# TODO(tpaine) remove this
+def sparse_initialisation(n_inputs, n_outputs, sparsity=0.05, std=0.01):
+    """
+    sparsity: fraction of the weights to each output unit that should be
+    nonzero
+    """
+    weights = numpy.zeros((n_inputs, n_outputs), dtype='float32')
+    size = int(sparsity * n_inputs)
+    for k in xrange(n_outputs):
+        indices = numpy.arange(n_inputs)
+        numpy.random.shuffle(indices)
+        indices = indices[:size]
+        values = numpy.random.randn(size).astype(numpy.float32) * std
+        weights[indices, k] = values
+
+    return weights
 
 
 class InputLayer(object):
@@ -388,10 +349,10 @@ class PoolingLayer(object):
     def get_output_shape(self):
         output_shape = list(self.input_layer.get_output_shape())
         if self.ignore_border:
-            output_shape[-1] = int(np.floor(float(output_shape[-1])
+            output_shape[-1] = int(numpy.floor(float(output_shape[-1])
                                    / self.ds_factor))
         else:
-            output_shape[-1] = int(np.ceil(float(output_shape[-1])
+            output_shape[-1] = int(numpy.ceil(float(output_shape[-1])
                                    / self.ds_factor))
         return tuple(output_shape)
 
@@ -415,14 +376,14 @@ class Pooling2DLayer(object):
     def get_output_shape(self):
         output_shape = list(self.input_layer.get_output_shape())
         if self.ignore_border:
-            output_shape[-2] = int(np.floor(float(output_shape[-2])
+            output_shape[-2] = int(numpy.floor(float(output_shape[-2])
                                    / self.pool_size[0]))
-            output_shape[-1] = int(np.floor(float(output_shape[-1])
+            output_shape[-1] = int(numpy.floor(float(output_shape[-1])
                                    / self.pool_size[1]))
         else:
-            output_shape[-2] = int(np.ceil(float(output_shape[-2])
+            output_shape[-2] = int(numpy.ceil(float(output_shape[-2])
                                    / self.pool_size[0]))
-            output_shape[-1] = int(np.ceil(float(output_shape[-1])
+            output_shape[-1] = int(numpy.ceil(float(output_shape[-1])
                                    / self.pool_size[1]))
         return tuple(output_shape)
 
@@ -464,14 +425,14 @@ class DenseLayer(object):
                  nonlinearity=rectify, dropout=0.):
         self.n_outputs = n_outputs
         self.input_layer = input_layer
-        self.weights_std = np.float32(weights_std)
-        self.init_bias_value = np.float32(init_bias_value)
+        self.weights_std = numpy.float32(weights_std)
+        self.init_bias_value = numpy.float32(init_bias_value)
         self.nonlinearity = nonlinearity
         self.dropout = dropout
         self.mb_size = self.input_layer.mb_size
 
         input_shape = self.input_layer.get_output_shape()
-        self.n_inputs = int(np.prod(input_shape[1:]))
+        self.n_inputs = int(numpy.prod(input_shape[1:]))
         self.flatinput_shape = (self.mb_size, self.n_inputs)
 
         self.W = shared_single(2)
@@ -483,9 +444,9 @@ class DenseLayer(object):
 
     def reset_params(self):
         self.W.set_value(
-            np.random.randn(self.n_inputs, self.n_outputs).astype(np.float32)
-            * self.weights_std)
-        self.b.set_value(np.ones(self.n_outputs).astype(np.float32)
+            numpy.random.randn(self.n_inputs, self.n_outputs).astype(
+                numpy.float32) * self.weights_std)
+        self.b.set_value(numpy.ones(self.n_outputs).astype(numpy.float32)
                          * self.init_bias_value)
 
     def get_output_shape(self):
@@ -522,18 +483,18 @@ class DenseLayer(object):
         return [(self.W, self.rescaled_weights(c))]
 
 
-class DenseLayerNoBias(object):
+class DenseNoBiasLayer(object):
     def __init__(self, input_layer, n_outputs, weights_std,
                  nonlinearity=rectify, dropout=0.):
         self.n_outputs = n_outputs
         self.input_layer = input_layer
-        self.weights_std = np.float32(weights_std)
+        self.weights_std = numpy.float32(weights_std)
         self.nonlinearity = nonlinearity
         self.dropout = dropout
         self.mb_size = self.input_layer.mb_size
 
         input_shape = self.input_layer.get_output_shape()
-        self.n_inputs = int(np.prod(input_shape[1:]))
+        self.n_inputs = int(numpy.prod(input_shape[1:]))
         self.flatinput_shape = (self.mb_size, self.n_inputs)
 
         self.W = shared_single(2)
@@ -543,8 +504,8 @@ class DenseLayerNoBias(object):
 
     def reset_params(self):
         self.W.set_value(
-            np.random.randn(self.n_inputs, self.n_outputs).astype(np.float32)
-            * self.weights_std)
+            numpy.random.randn(self.n_inputs, self.n_outputs).astype(
+                numpy.float32) * self.weights_std)
 
     def get_output_shape(self):
         return (self.mb_size, self.n_outputs)
@@ -579,69 +540,6 @@ class DenseLayerNoBias(object):
         return [(self.W, self.rescaled_weights(c))]
 
 
-class ADenseLayer(DenseLayer):
-    def __init__(self, input_layer, n_outputs, weights_std, init_bias_value,
-                 nonlinearity=a_rectify, dropout=0.):
-        self.alpha = theano.shared(np.array(0.0, dtype=theano.config.floatX))
-        super(ADenseLayer, self).__init__(input_layer,
-                                          n_outputs, weights_std,
-                                          init_bias_value,
-                                          nonlinearity=nonlinearity,
-                                          dropout=dropout)
-
-    def output(self, input=None, dropout_active=True, *args, **kwargs):
-        # use the 'dropout_active' keyword argument to disable it at test time.
-        # It is on by default.
-        if input is None:
-            input = self.input_layer.output(dropout_active=dropout_active,
-                                            *args, **kwargs)
-        if len(self.input_layer.get_output_shape()) > 2:
-            input = input.reshape(self.flatinput_shape)
-
-        if dropout_active and (self.dropout > 0.):
-            retain_prob = 1 - self.dropout
-            input = (input / retain_prob
-                     * srng.binomial(input.shape, p=retain_prob,
-                                     dtype='int32').astype('float32'))
-            # apply the input mask and rescale the input accordingly.
-            # By doing this it's no longer necessary to rescale the weights
-            # at test time.
-
-        return self.nonlinearity(T.dot(input, self.W)
-                                 + self.b.dimshuffle('x', 0), self.alpha)
-
-
-class ADenseLayerNoBias(DenseLayerNoBias):
-    def __init__(self, input_layer, n_outputs, weights_std,
-                 nonlinearity=rectify, dropout=0.):
-        self.alpha = theano.shared(np.array(0.0, dtype=theano.config.floatX))
-        super(ADenseLayerNoBias, self).__init__(input_layer,
-                                                n_outputs,
-                                                weights_std,
-                                                nonlinearity=nonlinearity,
-                                                dropout=dropout)
-
-    def output(self, input=None, dropout_active=True, *args, **kwargs):
-        # use the 'dropout_active' keyword argument to disable it at test time.
-        # It is on by default.
-        if input is None:
-            input = self.input_layer.output(dropout_active=dropout_active,
-                                            *args, **kwargs)
-        if len(self.input_layer.get_output_shape()) > 2:
-            input = input.reshape(self.flatinput_shape)
-
-        if dropout_active and (self.dropout > 0.):
-            retain_prob = 1 - self.dropout
-            input = (input / retain_prob
-                     * srng.binomial(input.shape, p=retain_prob,
-                                     dtype='int32').astype('float32'))
-            # apply the input mask and rescale the input accordingly.
-            # By doing this it's no longer necessary to rescale the weights
-            # at test time.
-
-        return self.nonlinearity(T.dot(input, self.W), self.alpha)
-
-
 class ConvLayer(object):
     def __init__(self,
                  input_layer,
@@ -656,8 +554,8 @@ class ConvLayer(object):
         self.filter_length = filter_length
         self.stride = 1
         self.input_layer = input_layer
-        self.weights_std = np.float32(weights_std)
-        self.init_bias_value = np.float32(init_bias_value)
+        self.weights_std = numpy.float32(weights_std)
+        self.init_bias_value = numpy.float32(init_bias_value)
         self.nonlinearity = nonlinearity
         self.flip_conv_dims = flip_conv_dims
         self.dropout = dropout
@@ -688,8 +586,8 @@ class StridedConvLayer(object):
         self.stride = 1
         self.input_layer = input_layer
         self.stride = stride
-        self.weights_std = np.float32(weights_std)
-        self.init_bias_value = np.float32(init_bias_value)
+        self.weights_std = numpy.float32(weights_std)
+        self.init_bias_value = numpy.float32(init_bias_value)
         self.nonlinearity = nonlinearity
         self.dropout = dropout
         self.mb_size = self.input_layer.mb_size
@@ -707,9 +605,9 @@ class StridedConvLayer(object):
 
     def reset_params(self):
         self.W.set_value(
-            np.random.randn(*self.filter_shape).astype(np.float32)
+            numpy.random.randn(*self.filter_shape).astype(numpy.float32)
             * self.weights_std)
-        self.b.set_value(np.ones(self.n_filters).astype(np.float32)
+        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32)
                          * self.init_bias_value)
 
     def get_output_shape(self):
@@ -737,7 +635,8 @@ class StridedConvLayer(object):
         if self.stride == self.filter_length:
             print " better use a tensordot"
 
-            conved = T.tensordot(r_input, self.W, np.asarray([[1, 3], [1, 2]]))
+            conved = T.tensordot(r_input, self.W, numpy.asarray([[1, 3],
+                                                                [1, 2]]))
             conved = conved.dimshuffle(0, 2, 1)
         elif self.stride == self.filter_length / 2:
             print " better use two tensordots"
@@ -760,9 +659,9 @@ class StridedConvLayer(object):
                 * self.filter_length + self.stride].reshape(r2_input_shape_odd)
 
             conved_even = T.tensordot(r2_input_even,
-                                      self.W, np.asarray([[1, 3], [1, 2]]))
+                                      self.W, numpy.asarray([[1, 3], [1, 2]]))
             conved_odd = T.tensordot(r2_input_odd,
-                                     self.W, np.asarray([[1, 3], [1, 2]]))
+                                     self.W, numpy.asarray([[1, 3], [1, 2]]))
 
             conved_even = conved_even.dimshuffle(0, 2, 1)
             conved_odd = conved_odd.dimshuffle(0, 2, 1)
@@ -799,13 +698,14 @@ class Conv2DLayer(object):
                  nonlinearity=rectify,
                  dropout=0.,
                  dropout_tied=False,
-                 border_mode='valid'):
+                 border_mode='valid',
+                 trainable=True):
         self.n_filters = n_filters
         self.filter_width = filter_width
         self.filter_height = filter_height
         self.input_layer = input_layer
-        self.weights_std = np.float32(weights_std)
-        self.init_bias_value = np.float32(init_bias_value)
+        self.weights_std = numpy.float32(weights_std)
+        self.init_bias_value = numpy.float32(init_bias_value)
         self.nonlinearity = nonlinearity
         self.dropout = dropout
         # if this is on, the same dropout mask is applied across the entire
@@ -820,6 +720,7 @@ class Conv2DLayer(object):
         self.filter_shape = (n_filters, self.input_shape[1], filter_width,
                              filter_height)
 
+        self.trainable = trainable
         self.W = shared_single(4)
         self.b = shared_single(1)
         self.params = [self.W, self.b]
@@ -828,9 +729,9 @@ class Conv2DLayer(object):
 
     def reset_params(self):
         self.W.set_value(
-            np.random.randn(*self.filter_shape).astype(np.float32)
+            numpy.random.randn(*self.filter_shape).astype(numpy.float32)
             * self.weights_std)
-        self.b.set_value(np.ones(self.n_filters).astype(np.float32)
+        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32)
                          * self.init_bias_value)
 
     def get_output_shape(self):
@@ -907,319 +808,6 @@ class Conv2DLayer(object):
         return [(self.W, self.rescaled_weights(c))]
 
 
-# TODO(tpaine) remove this
-class MaxoutLayer(object):
-    def __init__(self, input_layer, n_filters_per_unit, dropout=0.):
-        self.n_filters_per_unit = n_filters_per_unit
-        self.input_layer = input_layer
-        self.input_shape = self.input_layer.get_output_shape()
-        self.dropout = dropout
-        self.mb_size = self.input_layer.mb_size
-
-        self.params = []
-        self.bias_params = []
-
-    def get_output_shape(self):
-        return (self.input_shape[0], self.input_shape[1]
-                / self.n_filters_per_unit, self.input_shape[2])
-
-    def output(self, input=None, dropout_active=True, *args, **kwargs):
-        if input is None:
-            input = self.input_layer.output(dropout_active=dropout_active,
-                                            *args, **kwargs)
-
-        if dropout_active and (self.dropout > 0.):
-            retain_prob = 1 - self.dropout
-            input = (input / retain_prob
-                     * srng.binomial(input.shape, p=retain_prob,
-                                     dtype='int32').astype('float32'))
-            # apply the input mask and rescale the input accordingly.
-            # By doing this it's no longer necessary to rescale the weights
-            # at test time.
-
-        output = input.reshape((self.input_shape[0], self.input_shape[1]
-                                / self.n_filters_per_unit,
-                                self.n_filters_per_unit, self.input_shape[2]))
-        output = T.max(output, 2)
-        return output
-
-
-class NIN2DLayer(object):
-    def __init__(self, input_layer, n_outputs, weights_std, init_bias_value,
-                 nonlinearity=rectify, dropout=0., dropout_tied=False):
-        self.n_outputs = n_outputs
-        self.input_layer = input_layer
-        self.weights_std = np.float32(weights_std)
-        self.init_bias_value = np.float32(init_bias_value)
-        self.nonlinearity = nonlinearity
-        self.dropout = dropout
-        # if this is on, the same dropout mask is applied to all instances of
-        # the layer across the map.
-        self.dropout_tied = dropout_tied
-        self.mb_size = self.input_layer.mb_size
-
-        self.input_shape = self.input_layer.get_output_shape()
-        self.n_inputs = self.input_shape[1]
-
-        self.W = shared_single(2)
-        self.b = shared_single(1)
-        self.params = [self.W, self.b]
-        self.bias_params = [self.b]
-        self.reset_params()
-
-    def reset_params(self):
-        self.W.set_value(
-            np.random.randn(self.n_inputs, self.n_outputs).astype(np.float32)
-            * self.weights_std)
-        self.b.set_value(np.ones(self.n_outputs).astype(np.float32)
-                         * self.init_bias_value)
-
-    def get_output_shape(self):
-        return (self.mb_size, self.n_outputs, self.input_shape[2],
-                self.input_shape[3])
-
-    def output(self, input=None, dropout_active=True, *args, **kwargs):
-        # use the 'dropout_active' keyword argument to disable it at test time.
-        # It is on by default.
-        if input is None:
-            input = self.input_layer.output(dropout_active=dropout_active,
-                                            *args, **kwargs)
-
-        if dropout_active and (self.dropout > 0.):
-            retain_prob = 1 - self.dropout
-            if self.dropout_tied:
-                # tying of the dropout masks across the entire feature maps,
-                # so broadcast across the feature maps.
-
-                mask = srng.binomial(
-                    (input.shape[0], input.shape[1]),
-                    p=retain_prob,
-                    dtype='int32').astype('float32').dimshuffle(0, 1, 'x', 'x')
-            else:
-                mask = srng.binomial(input.shape, p=retain_prob,
-                                     dtype='int32').astype('float32')
-                # apply the input mask and rescale the input accordingly.
-                # By doing this it's no longer necessary to rescale the weights
-                # at test time.
-            input = input / retain_prob * mask
-
-        # this has shape (batch_size, width, height, out_maps)
-        prod = T.tensordot(input, self.W, [[1], [0]])
-        # move the feature maps to the 1st axis, where they were in the input
-        prod = prod.dimshuffle(0, 3, 1, 2)
-        return self.nonlinearity(prod + self.b.dimshuffle('x', 0, 'x', 'x'))
-
-
-class FilterPoolingLayer(object):
-    """
-    pools filter outputs from the previous layer. If the pooling function is
-    'max', the result is maxout.
-    supported pooling function:
-        - 'max': maxout (max pooling)
-        - 'ss': sum of squares (L2 pooling)
-        - 'rss': root of the sum of the squares (L2 pooling)
-    """
-    def __init__(self, input_layer, n_filters_per_unit, dropout=0.,
-                 pooling_function='max'):
-        self.n_filters_per_unit = n_filters_per_unit
-        self.input_layer = input_layer
-        self.input_shape = self.input_layer.get_output_shape()
-        self.dropout = dropout
-        self.pooling_function = pooling_function
-        self.mb_size = self.input_layer.mb_size
-
-        self.params = []
-        self.bias_params = []
-
-    def get_output_shape(self):
-        return (self.input_shape[0], self.input_shape[1]
-                / self.n_filters_per_unit, self.input_shape[2])
-
-    def output(self, input=None, dropout_active=True, *args, **kwargs):
-        if input is None:
-            input = self.input_layer.output(dropout_active=dropout_active,
-                                            *args, **kwargs)
-
-        if dropout_active and (self.dropout > 0.):
-            retain_prob = 1 - self.dropout
-            input = (input / retain_prob
-                     * srng.binomial(input.shape, p=retain_prob,
-                                     dtype='int32').astype('float32'))
-            # apply the input mask and rescale the input accordingly.
-            # By doing this it's no longer necessary to rescale the weights
-            # at test time.
-
-        output = input.reshape((self.input_shape[0], self.input_shape[1]
-                                / self.n_filters_per_unit,
-                                self.n_filters_per_unit, self.input_shape[2]))
-
-        if self.pooling_function == "max":
-            output = T.max(output, 2)
-        elif self.pooling_function == "ss":
-            output = T.mean(output**2, 2)
-        elif self.pooling_function == "rss":
-            # a stabilising constant to prevent NaN in the gradient
-            padding = 0.000001
-            output = T.sqrt(T.mean(output**2, 2) + padding)
-        else:
-            raise "Unknown pooling function: %s" % self.pooling_function
-
-        return output
-
-
-class OutputLayer(object):
-    def __init__(self, input_layer, error_measure='mse'):
-        self.input_layer = input_layer
-        self.input_shape = self.input_layer.get_output_shape()
-        self.params = []
-        self.bias_params = []
-        self.error_measure = error_measure
-        self.mb_size = self.input_layer.mb_size
-
-        self.target_var = T.matrix()  # variable for the labels
-        if error_measure == 'maha':
-            self.target_cov_var = T.tensor3()
-
-    def error(self, *args, **kwargs):
-        input = self.input_layer.output(*args, **kwargs)
-
-        # never actually dropout anything on the output layer,
-        # just pass it along!
-
-        if self.error_measure == 'mse':
-            error = T.mean((input - self.target_var) ** 2)
-        elif self.error_measure == 'ce':  # cross entropy
-            error = T.mean(T.nnet.binary_crossentropy(input, self.target_var))
-        elif self.error_measure == 'nca':
-            epsilon = 1e-8
-            # dist_ij = - T.dot(input, input.T)
-            # dist_ij = input
-            dist_ij = T.sum((input.dimshuffle(0, 'x', 1)
-                            - input.dimshuffle('x', 0, 1)) ** 2, axis=2)
-            p_ij_unnormalised = T.exp(-dist_ij) + epsilon
-            # set the diagonal to 0
-            p_ij_unnormalised = p_ij_unnormalised * (1 - T.eye(self.mb_size))
-            p_ij = p_ij_unnormalised / T.sum(p_ij_unnormalised, axis=1)
-            return - T.mean(p_ij * self.target_var)
-
-            # p_ij = p_ij_unnormalised / T.sum(p_ij_unnormalised, axis=1)
-            # return np.mean(p_ij * self.target_var)
-        elif self.error_measure == 'maha':
-            # e = T.shape_padright(input - self.target_var)
-            # e = (input - self.target_var).dimshuffle((0, 'x', 1))
-            # error = T.sum(T.sum(self.target_cov_var * e, 2) ** 2)
-            # / self.mb_size
-            e = (input - self.target_var)
-            eTe = e.dimshuffle((0, 'x', 1)) * e.dimshuffle((0, 1, 'x'))
-            error = T.sum(self.target_cov_var * eTe) / self.mb_size
-        else:
-            1 / 0
-
-        return error
-
-    def error_rate(self, *args, **kwargs):
-        input = self.input_layer.output(*args, **kwargs)
-        error_rate = T.mean(T.neq(input > 0.5, self.target_var))
-        return error_rate
-
-    def predictions(self, *args, **kwargs):
-        return self.input_layer.output(*args, **kwargs)
-
-
-class FlattenLayer(object):
-    def __init__(self, input_layer):
-        self.input_layer = input_layer
-        self.params = []
-        self.bias_params = []
-        self.mb_size = self.input_layer.mb_size
-
-    def get_output_shape(self):
-        input_shape = self.input_layer.get_output_shape()
-        size = int(np.prod(input_shape[1:]))
-        return (self.mb_size, size)
-
-    def output(self, *args, **kwargs):
-        input = self.input_layer.output(*args, **kwargs)
-        return input.reshape(self.get_output_shape())
-
-
-class FlattenLayer2(object):
-    def __init__(self, input_layer):
-        self.input_layer = input_layer
-        self.params = []
-        self.bias_params = []
-        self.mb_size = self.input_layer.mb_size
-
-    def get_output_shape(self):
-        input_shape = self.input_layer.get_output_shape()
-        size = int(np.prod(input_shape[0:-1]))
-        return (self.mb_size, size)
-
-    def output(self, *args, **kwargs):
-        input = self.input_layer.output(*args, **kwargs)
-        return input.reshape(self.get_output_shape())
-
-
-class ConcatenateLayer(object):
-    def __init__(self, input_layers):
-        self.input_layers = input_layers
-        self.params = []
-        self.bias_params = []
-        self.mb_size = self.input_layers[0].mb_size
-
-    def get_output_shape(self):
-        # this assumes the layers are already flat!
-        sizes = [i.get_output_shape()[1] for i in self.input_layers]
-        return (self.mb_size, sum(sizes))
-
-    def output(self, *args, **kwargs):
-        inputs = [i.output(*args, **kwargs) for i in self.input_layers]
-        return T.concatenate(inputs, axis=1)
-
-
-class ResponseNormalisationLayer(object):
-    def __init__(self, input_layer, n, k, alpha, beta):
-        """
-        n: window size
-        k: bias
-        alpha: scaling
-        beta: power
-        """
-        self.input_layer = input_layer
-        self.params = []
-        self.bias_params = []
-        self.n = n
-        self.k = k
-        self.alpha = alpha
-        self.beta = beta
-        self.mb_size = self.input_layer.mb_size
-
-    def get_output_shape(self):
-        return self.input_layer.get_output_shape()
-
-    def output(self, *args, **kwargs):
-        """
-        Code is based on
-        https://github.com/lisa-lab/pylearn2/blob/master/pylearn2/expr/
-        normalize.py
-        """
-        input = self.input_layer.output(*args, **kwargs)
-
-        half = self.n // 2
-        sq = T.sqr(input)
-        b, ch, r, c = input.shape
-        extra_channels = T.alloc(0., b, ch + 2*half, r, c)
-        sq = T.set_subtensor(extra_channels[:, half:half+ch, :, :], sq)
-        scale = self.k
-
-        for i in xrange(self.n):
-            scale += self.alpha * sq[:, i:i+ch, :, :]
-
-        scale = scale ** self.beta
-
-        return input / scale
-
-
 class StridedConv2DLayer(object):
     def __init__(self,
                  input_layer,
@@ -1248,8 +836,8 @@ class StridedConv2DLayer(object):
         self.stride_x = stride_x
         self.stride_y = stride_y
         self.input_layer = input_layer
-        self.weights_std = np.float32(weights_std)
-        self.init_bias_value = np.float32(init_bias_value)
+        self.weights_std = numpy.float32(weights_std)
+        self.init_bias_value = numpy.float32(init_bias_value)
         self.nonlinearity = nonlinearity
         self.dropout = dropout
         # if this is on, the same dropout mask is applied to the whole map.
@@ -1280,9 +868,9 @@ class StridedConv2DLayer(object):
         self.reset_params()
 
     def reset_params(self):
-        self.W.set_value(np.random.randn(*self.filter_shape).astype(np.float32)
-                         * self.weights_std)
-        self.b.set_value(np.ones(self.n_filters).astype(np.float32)
+        self.W.set_value(numpy.random.randn(*self.filter_shape).astype(
+            numpy.float32) * self.weights_std)
+        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32)
                          * self.init_bias_value)
 
     def get_output_shape(self):
@@ -1375,7 +963,7 @@ class StridedConv2DLayer(object):
             inputs_stacked = T.stack(*inputs_x)
             r_conved = T.tensordot(inputs_stacked,
                                    W_flipped,
-                                   np.asarray([[3, 5, 7], [1, 2, 3]]))
+                                   numpy.asarray([[3, 5, 7], [1, 2, 3]]))
 
             r_conved = r_conved.dimshuffle(2, 5, 3, 0, 4, 1)
             conved = r_conved.reshape((r_conved.shape[0],
@@ -1425,7 +1013,8 @@ class StridedConv2DLayer(object):
                     r_input = r_input.reshape(r_input_shape)
 
                     r_conved = T.tensordot(r_input, W_flipped,
-                                           np.asarray([[1, 3, 5], [1, 2, 3]]))
+                                           numpy.asarray([[1, 3, 5],
+                                                         [1, 2, 3]]))
                     r_conved = r_conved.dimshuffle(0, 3, 1, 2)
                     conved = T.set_subtensor(conved[
                         :,
@@ -1514,348 +1103,18 @@ class StridedConv2DLayer(object):
         return [(self.W, self.rescaled_weights(c))]
 
 
-# TODO(tpaine) remove this layer
-class Rot90SliceLayer(object):
-    """
-    This layer cuts 4 square-shaped parts of out of the input, rotates them
-    0, 90, 180 and 270 degrees respectively
-    so they all have the same orientation, and then stacks them in the
-    minibatch dimension.
-
-    This allows for the same filters to be used in 4 directions.
-
-    IMPORTANT: this increases the minibatch size for all subsequent layers!
-    """
-    def __init__(self, input_layer, part_size):
-        self.input_layer = input_layer
-        self.part_size = part_size
-        self.params = []
-        self.bias_params = []
-        # 4 times bigger because of the stacking!
-        self.mb_size = self.input_layer.mb_size * 4
-
-    def get_output_shape(self):
-        input_shape = self.input_layer.get_output_shape()
-        return (self.mb_size, input_shape[1], self.part_size, self.part_size)
-
-    def output(self, *args, **kwargs):
-        input = self.input_layer.output(*args, **kwargs)
-
-        ps = self.part_size  # shortcut
-        # 0 degrees
-        part0 = input[:, :, :ps, :ps]
-        # 90 degrees
-        part1 = input[:, :, :ps, :-ps-1:-1].dimshuffle(0, 1, 3, 2)
-        # 180 degrees
-        part2 = input[:, :, :-ps-1:-1, :-ps-1:-1]
-        # 270 degrees
-        part3 = input[:, :, :-ps-1:-1, :ps].dimshuffle(0, 1, 3, 2)
-
-        return T.concatenate([part0, part1, part2, part3], axis=0)
-
-
-# TODO(tpaine) remove this layer
-class Rot90MergeLayer(FlattenLayer):
-    """
-    This layer merges featuremaps that were separated by the Rot90SliceLayer
-    and flattens them in one go.
-    """
-    def __init__(self, input_layer):
-        self.input_layer = input_layer
-        self.params = []
-        self.bias_params = []
-        # divide by 4 again (it was multiplied by 4 by the Rot90SliceLayer)
-        self.mb_size = self.input_layer.mb_size // 4
-
-    def get_output_shape(self):
-        input_shape = self.input_layer.get_output_shape()
-        size = int(np.prod(input_shape[1:])) * 4
-        return (self.mb_size, size)
-
-    def output(self, *args, **kwargs):
-        input_shape = self.input_layer.get_output_shape()
-        input = self.input_layer.output(*args, **kwargs)
-        # split out the 4* dimension
-        input_r = input.reshape((4,
-                                 self.mb_size,
-                                 input_shape[1] * input_shape[2]
-                                 * input_shape[3]))
-        return input_r.transpose(1, 0, 2).reshape(self.get_output_shape())
-
-
-# TODO(tpaine) remove this layer
-class MultiRotSliceLayer(ConcatenateLayer):
-    """
-    This layer cuts 4 square-shaped parts of out of the input, rotates them 0,
-    90, 180 and 270 degrees respectively
-    so they all have the same orientation, and then stacks them in the
-    minibatch dimension.
-
-    It takes multiple input layers (expected to be multiple rotations of the
-    same image) and stacks the results.
-    All inputs should have the same shape!
-
-    This allows for the same filters to be used in many different directions.
-
-    IMPORTANT: this increases the minibatch size for all subsequent layers!
-
-    enabling include_flip also includes flipped versions of all the parts. This
-    doubles the number of views.
-    """
-    def __init__(self, input_layers, part_size, include_flip=False):
+class ConcatenateLayer(object):
+    def __init__(self, input_layers):
         self.input_layers = input_layers
-        self.part_size = part_size
-        self.include_flip = include_flip
         self.params = []
         self.bias_params = []
-        self.mb_size = (self.input_layers[0].mb_size * 4
-                        * len(self.input_layers))
-        # 4 * num_layers times bigger because of the stacking!
-
-        if self.include_flip:
-            # include_flip doubles the number of views.
-            self.mb_size *= 2
+        self.mb_size = self.input_layers[0].mb_size
 
     def get_output_shape(self):
-        input_shape = self.input_layers[0].get_output_shape()
-        return (self.mb_size, input_shape[1], self.part_size, self.part_size)
+        # this assumes the layers are already flat!
+        sizes = [i.get_output_shape()[1] for i in self.input_layers]
+        return (self.mb_size, sum(sizes))
 
     def output(self, *args, **kwargs):
-        parts = []
-        for input_layer in self.input_layers:
-            input = input_layer.output(*args, **kwargs)
-            ps = self.part_size  # shortcut
-
-            if self.include_flip:
-                # regular and flipped
-                input_representations = [input, input[:, :, :, ::-1]]
-            else:
-                # just regular
-                input_representations = [input]
-
-            for input_rep in input_representations:
-                # 0 degrees
-                part0 = input_rep[:, :, :ps, :ps]
-                # 90 degrees
-                part1 = input_rep[:, :, :ps, :-ps-1:-1].dimshuffle(0, 1, 3, 2)
-                # 180 degrees
-                part2 = input_rep[:, :, :-ps-1:-1, :-ps-1:-1]
-                # 270 degrees
-                part3 = input_rep[:, :, :-ps-1:-1, :ps].dimshuffle(0, 1, 3, 2)
-                parts.extend([part0, part1, part2, part3])
-
-        return T.concatenate(parts, axis=0)
-
-
-# TODO(tpaine) remove this layer
-class MultiRotMergeLayer(FlattenLayer):
-    """
-    This layer merges featuremaps that were separated by the MultiRotSliceLayer
-    and flattens them in one go.
-    """
-    def __init__(self, input_layer, num_views):
-        """
-        num_views is the number of different input representations that were
-        merged.
-        """
-        self.input_layer = input_layer
-        self.num_views = num_views
-        self.params = []
-        self.bias_params = []
-        # divide by total number of parts
-        self.mb_size = self.input_layer.mb_size // (4 * self.num_views)
-
-    def get_output_shape(self):
-        input_shape = self.input_layer.get_output_shape()
-        size = int(np.prod(input_shape[1:])) * (4 * self.num_views)
-        return (self.mb_size, size)
-
-    def output(self, *args, **kwargs):
-        input_shape = self.input_layer.get_output_shape()
-        input = self.input_layer.output(*args, **kwargs)
-        # split out the 4* dimension
-        input_r = input.reshape((4 * self.num_views, self.mb_size,
-                                int(np.prod(input_shape[1:]))))
-        return input_r.transpose(1, 0, 2).reshape(self.get_output_shape())
-
-
-# TODO(tpaine) remove this
-def sparse_initialisation(n_inputs, n_outputs, sparsity=0.05, std=0.01):
-    """
-    sparsity: fraction of the weights to each output unit that should be
-    nonzero
-    """
-    weights = np.zeros((n_inputs, n_outputs), dtype='float32')
-    size = int(sparsity * n_inputs)
-    for k in xrange(n_outputs):
-        indices = np.arange(n_inputs)
-        np.random.shuffle(indices)
-        indices = indices[:size]
-        values = np.random.randn(size).astype(np.float32) * std
-        weights[indices, k] = values
-
-    return weights
-
-
-# TODO(tpaine) remove this layer
-class FeatureMaxPoolingLayer_old(object):
-    """
-    OLD implementation using T.maximum iteratively. This turns out to be slow.
-
-    Max pooling across feature maps. This can be used to implement maxout.
-    This is similar to the FilterPoolingLayer, but this version uses a
-    different implementation that supports input of any dimensionality and can
-    do pooling across any of the dimensions. It also supports overlapping
-    pooling (the stride and downsample factor can be set separately).
-
-    based on code from pylearn2's Maxout implementation.
-    https://github.com/lisa-lab/pylearn2/blob/
-    a2b616a384b9f39fa6f3e8d9e316b3af1274e687/pylearn2/models/maxout.py
-
-    IMPORTANT: this layer requires that num_output_features =
-    (feature_dim_size - pool_size + stride) / stride is INTEGER.
-    if it isn't, it probably won't work properly.
-    """
-    def __init__(self, input_layer, pool_size, stride=None, feature_dim=1):
-        """
-        pool_size: the number of inputs to be pooled together.
-
-        stride: the stride between pools, if not set it defaults to pool_size
-        (no overlap)
-
-        feature_dim: the dimension of the input to pool across. By default this
-        is 1 for both dense and convolutional layers (bc01).
-        For c01b, this has to be set to 0.
-        """
-        self.pool_size = pool_size
-        self.stride = stride if stride is not None else pool_size
-        self.feature_dim = feature_dim
-        self.input_layer = input_layer
-        self.input_shape = self.input_layer.get_output_shape()
-        self.mb_size = self.input_layer.mb_size
-
-        self.params = []
-        self.bias_params = []
-
-    def get_output_shape(self):
-        feature_dim_size = self.input_shape[self.feature_dim]
-        out_feature_dim_size = (feature_dim_size - self.pool_size
-                                + self.stride) // self.stride
-        output_shape = list(self.input_shape)  # make a mutable copy
-        output_shape[self.feature_dim] = out_feature_dim_size
-        return tuple(output_shape)
-
-    def output(self, *args, **kwargs):
-        input = self.input_layer.output(*args, **kwargs)
-
-        indices = [slice(None)] * input.ndim  # select everything
-
-        output = None
-        for k in xrange(self.pool_size):
-            # narrow down the selection for the feature dim
-            indices[self.feature_dim] = slice(k, None, self.stride)
-            m = input[tuple(indices)]
-            if output is None:
-                output = m
-            else:
-                output = T.maximum(output, m)
-
-        return output
-
-
-# TODO(tpaine) remove this layer
-class FeatureMaxPoolingLayer(object):
-    """
-    Max pooling across feature maps. This can be used to implement maxout.
-    This is similar to the FilterPoolingLayer, but this version uses a
-    different implementation that supports input of any dimensionality and can
-    do pooling across any of the dimensions.
-
-    IMPORTANT: this layer requires that feature_dim_size is a multiple of
-    pool_size.
-    """
-    def __init__(self, input_layer, pool_size, feature_dim=1,
-                 implementation='max_pool'):
-        """
-        pool_size: the number of inputs to be pooled together.
-
-        feature_dim: the dimension of the input to pool across. By default this
-        is 1 for both dense and convolutional layers (bc01).
-        For c01b, this has to be set to 0.
-
-        implementation:
-            - 'max_pool': uses theano's max_pool_2d - doesn't work for input
-                dimension > 1024!
-            - 'reshape': reshapes the tensor to create a 'pool' dimension and
-                then uses T.max.
-        """
-        self.pool_size = pool_size
-        self.feature_dim = feature_dim
-        self.implementation = implementation
-        self.input_layer = input_layer
-        self.input_shape = self.input_layer.get_output_shape()
-        self.mb_size = self.input_layer.mb_size
-
-        if self.input_shape[self.feature_dim] % self.pool_size != 0:
-            raise """Feature dimension is not a multiple of the pool size.
-                    Doesn't work!"""
-
-        self.params = []
-        self.bias_params = []
-
-    def get_output_shape(self):
-        feature_dim_size = self.input_shape[self.feature_dim]
-        out_feature_dim_size = feature_dim_size // self.pool_size
-        output_shape = list(self.input_shape)  # make a mutable copy
-        output_shape[self.feature_dim] = out_feature_dim_size
-        return tuple(output_shape)
-
-    def output(self, *args, **kwargs):
-        input = self.input_layer.output(*args, **kwargs)
-
-        if self.implementation == 'max_pool':
-            # max_pool_2d operates on the last 2 dimensions of the input.
-            # So shift the feature dim to be last.
-            shuffle_order = (range(
-                0, self.feature_dim) + range(self.feature_dim + 1, input.ndim)
-                + [self.feature_dim])
-            unshuffle_order = (range(
-                0, self.feature_dim) + [input.ndim - 1]
-                + range(self.feature_dim, input.ndim - 1))
-
-            input_shuffled = input.dimshuffle(*shuffle_order)
-            output_shuffled = max_pool_2d(input_shuffled, (1, self.pool_size))
-            output = output_shuffled.dimshuffle(*unshuffle_order)
-
-        elif self.implementation == 'reshape':
-            out_feature_dim_size = self.get_output_shape()[self.feature_dim]
-            pool_shape = (self.input_shape[:self.feature_dim]
-                          + (out_feature_dim_size, self.pool_size)
-                          + self.input_shape[self.feature_dim + 1:])
-            input_reshaped = input.reshape(pool_shape)
-            output = T.max(input_reshaped, axis=self.feature_dim + 1)
-        else:
-            raise "Uknown implementation string '%s'" % self.implementation
-
-        return output
-
-
-# TODO(tpaine) remove this
-def dump_params(l, **kwargs):
-    """
-    dump parameters from layer l and down into a file.
-    The dump file has the same name as the script, with _paramdump.pkl
-    appended.
-
-    This dump can be used to recover after a crash.
-
-    additional metadata (i.e. chunk number) can be passed as keyword arguments.
-    """
-    param_values = get_param_values(l)
-    kwargs['param_values'] = param_values
-    fn = os.path.basename(sys.argv[0]).replace(".py", "_paramdump.pkl")
-    dir = os.path.dirname(sys.argv[0])
-    path = os.path.join(dir, fn)
-
-    with open(path, 'w') as f:
-        pickle.dump(kwargs, f, pickle.HIGHEST_PROTOCOL)
+        inputs = [i.output(*args, **kwargs) for i in self.input_layers]
+        return T.concatenate(inputs, axis=1)

@@ -81,10 +81,10 @@ Now, add anna to your PYTHONPATH environment variable in your ~/.bashrc file so 
 
     export $PYTHONPATH=$PYTHONPATH:/path_to_anna/anna
 
-Apply the changes by typing ` source ~/.bashrc ` in the terminal and you're all done! Now if you open python and type:
+Apply the changes by typing ` source ~/.bashrc ` in the terminal and you're all done! Now just open python and type:
 
     >>> import anna
     
-You will have a working copy of anna! Congratulations!
+If no error pops up, you will have a working copy of anna! Congratulations!
 
 

@@ -396,10 +396,13 @@ class GlobalPooling2DLayer(Layer):
     """
     Global pooling across the entire feature map, useful in NINs.
     """
-    def __init__(self, input_layer, pooling_function='mean'):
+    def __init__(self, input_layer, pooling_function='mean',
+                 nonlinearity=softmax):
         self.input_layer = input_layer
         self.pooling_function = pooling_function
         self.trainable = True
+        self.nonlinearity = nonlinearity
+
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
@@ -417,7 +420,7 @@ class GlobalPooling2DLayer(Layer):
         elif self.pooling_function == 'l2':
             out = T.sqrt((input ** 2).mean([2, 3]))
 
-        return out
+        return self.nonlinearity(out)
 
 
 class DenseLayer(Layer):

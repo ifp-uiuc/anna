@@ -6,18 +6,20 @@ This guide describes how to install anna on Ubuntu 12.04.
 
 In order to install and use anna properly, you will first need the following dependencies:
 
-+ cuda
++ CUDA
 
-+ python
++ Python
 
 + theano
 
 + pylearn2
 
 
-## Installing cuda
+## Installing CUDA
 
-## Installing python
+TBD
+
+## Installing Python
 
 We highly recommend using the [anaconda](https://store.continuum.io/cshop/anaconda/) scientific python distribution, mainly because it is easy to install and already includes several useful packages (numpy, scipy, matplotlib, ipython etc.)
 

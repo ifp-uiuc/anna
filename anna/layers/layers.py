@@ -288,6 +288,24 @@ def sparse_initialisation(n_inputs, n_outputs, sparsity=0.05, std=0.01):
     return weights
 
 
+class Layer(object):
+    def __init__(self):
+        raise NotImplementedError(str(type(self)) +
+                                  " does not implement this method")
+
+    def get_output_shape(self):
+        raise NotImplementedError(str(type(self)) +
+                                  " does not implement this method")
+
+    def output(self):
+        raise NotImplementedError(str(type(self)) +
+                                  " does not implement this method")
+
+    def reset_params(self):
+        raise NotImplementedError(str(type(self)) +
+                                  " does not implement this method")
+
+
 class InputLayer(Layer):
     def __init__(self, mb_size, n_features, length):
         self.mb_size = mb_size
@@ -929,21 +947,3 @@ class ConcatenateLayer(Layer):
     def output(self, *args, **kwargs):
         inputs = [i.output(*args, **kwargs) for i in self.input_layers]
         return T.concatenate(inputs, axis=1)
-
-
-class Layer(object):
-    def __init__(self):
-        raise NotImplementedError(str(type(self)) +
-                                  " does not implement this method")
-
-    def get_output_shape(self):
-        raise NotImplementedError(str(type(self)) +
-                                  " does not implement this method")
-
-    def output(self):
-        raise NotImplementedError(str(type(self)) +
-                                  " does not implement this method")
-
-    def reset_params(self):
-        raise NotImplementedError(str(type(self)) +
-                                  " does not implement this method")

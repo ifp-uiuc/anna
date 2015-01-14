@@ -36,14 +36,14 @@ Now if you open python from the terminal, you will see something like this:
 
 ## Installing theano
 
-[Theano](http://deeplearning.net/software/theano/) is a python library that is used for designing and optimizating symbolic mathematical expressions. (Give more detail on importance of theano?)
+[Theano](http://deeplearning.net/software/theano/) is a python library that is used for designing and optimizating symbolic mathematical expressions. These symbolic expressions form the backbone of the anna library. As such, it is absolutely essential to have a working version of theano before installing anna. (Give more detail on importance of theano?)
 
 While there appear to be mulitple ways to install theano, we recommend cloning the git repository to get the most up-to-date version:
 
     $ git clone git://github.com/Theano/Theano.git
     $ python setup.py develop
     
-The second command 
+The second command allows you to bypass the step where you must add theano to the PYTHONPATH and makes updating easier.
 
 To check if the installation was successful, simply open up python and type:
 
@@ -54,27 +54,26 @@ For further reference, please go [here](http://deeplearning.net/software/theano/
 
 ## Installing pylearn2
 
-[pylearn2](http://deeplearning.net/software/pylearn2/) 
+[pylearn2](http://deeplearning.net/software/pylearn2/), like anna, is a machine learning library that uses theano. Installing 
+pylearn2 will give anna access to the cuda kernels, originally designed by Alex Krizhevsky, that define the behavior of several of the network layers.
 
 To install, simply clone the git repository:
 
     $ git clone git://github.com/lisa-lab/pylearn2.git
 
-Then, add pylearn2 to your PYTHONPATH environment variable in your ~/.bashrc file so that python can locate it:
+Make sure to add pylearn2 to your PYTHONPATH environment variable in your ~/.bashrc file so that python can locate it:
     
     export $PYTHONPATH=$PYTHONPATH:/path_to_anna/anna
 
-Type the following in the terminal to apply the changes:
+Then, type ` source ~/.bashrc ` in the terminal to apply the changes.
 
-    $ source ~/.bashrc
-    
 To check if the installation was successful, simply open up python and type:
 
     >>> import pylearn2
 
-## Getting anna from git
+## Installing anna
 
-Once you have installed all the dependencies, you are ready to install anna. You can do this by checking out the latest version from github using the following terminal command:
+Once you have installed all of the dependencies, you will be ready to install anna. You can do this by checking out the latest version from github using the following terminal command:
 
     $ git clone https://github.com/ifp-uiuc/anna.git
     
@@ -82,14 +81,10 @@ Now, add anna to your PYTHONPATH environment variable in your ~/.bashrc file so 
 
     export $PYTHONPATH=$PYTHONPATH:/path_to_anna/anna
 
-And then type the following in the terminal to apply the changes.
-    
-    $ source ~/.bashrc
-
-You're all done! Now if you open python and type:
+Apply the changes by typing ` source ~/.bashrc ` in the terminal and you're all done! Now if you open python and type:
 
     >>> import anna
     
-You will have a working copy of anna. Congratulations!
+You will have a working copy of anna! Congratulations!
 
 

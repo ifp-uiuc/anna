@@ -288,7 +288,7 @@ def sparse_initialisation(n_inputs, n_outputs, sparsity=0.05, std=0.01):
     return weights
 
 
-class InputLayer(object):
+class InputLayer(Layer):
     def __init__(self, mb_size, n_features, length):
         self.mb_size = mb_size
         self.n_features = n_features
@@ -321,7 +321,7 @@ class FlatInputLayer(InputLayer):
         return self.input_var
 
 
-class Input2DLayer(object):
+class Input2DLayer(Layer):
     def __init__(self, mb_size, n_features, width, height):
         self.mb_size = mb_size
         self.n_features = n_features
@@ -336,7 +336,7 @@ class Input2DLayer(object):
         return self.input_var
 
 
-class PoolingLayer(object):
+class PoolingLayer(Layer):
     def __init__(self, input_layer, ds_factor, ignore_border=False):
         self.ds_factor = ds_factor
         self.input_layer = input_layer
@@ -361,7 +361,7 @@ class PoolingLayer(object):
         return max_pool_2d(input, (1, self.ds_factor), self.ignore_border)
 
 
-class Pooling2DLayer(object):
+class Pooling2DLayer(Layer):
     def __init__(self, input_layer, pool_size, ignore_border=False):
         ''' pool_size is a tuple.
         '''
@@ -392,7 +392,7 @@ class Pooling2DLayer(object):
         return max_pool_2d(input, self.pool_size, self.ignore_border)
 
 
-class GlobalPooling2DLayer(object):
+class GlobalPooling2DLayer(Layer):
     """
     Global pooling across the entire feature map, useful in NINs.
     """
@@ -420,7 +420,7 @@ class GlobalPooling2DLayer(object):
         return out
 
 
-class DenseLayer(object):
+class DenseLayer(Layer):
     def __init__(self, input_layer, n_outputs, weights_std, init_bias_value,
                  nonlinearity=rectify, dropout=0.):
         self.n_outputs = n_outputs
@@ -473,17 +473,8 @@ class DenseLayer(object):
         return self.nonlinearity(T.dot(input, self.W)
                                  + self.b.dimshuffle('x', 0))
 
-    def rescaled_weights(self, c):
-        # c is the maximal norm of the weight vector for a single filter.
-        norms = T.sqrt(T.sqr(self.W).mean(0, keepdims=True))
-        scale_factors = T.minimum(c / norms, 1)
-        return self.W * scale_factors
 
-    def rescaling_updates(self, c):
-        return [(self.W, self.rescaled_weights(c))]
-
-
-class DenseNoBiasLayer(object):
+class DenseNoBiasLayer(Layer):
     def __init__(self, input_layer, n_outputs, weights_std,
                  nonlinearity=rectify, dropout=0.):
         self.n_outputs = n_outputs
@@ -530,164 +521,8 @@ class DenseNoBiasLayer(object):
 
         return self.nonlinearity(T.dot(input, self.W))
 
-    def rescaled_weights(self, c):
-        # c is the maximal norm of the weight vector for a single filter.
-        norms = T.sqrt(T.sqr(self.W).mean(0, keepdims=True))
-        scale_factors = T.minimum(c / norms, 1)
-        return self.W * scale_factors
 
-    def rescaling_updates(self, c):
-        return [(self.W, self.rescaled_weights(c))]
-
-
-class ConvLayer(object):
-    def __init__(self,
-                 input_layer,
-                 n_filters,
-                 filter_length,
-                 weights_std,
-                 init_bias_value,
-                 nonlinearity=rectify,
-                 flip_conv_dims=False,
-                 dropout=0.):
-        self.n_filters = n_filters
-        self.filter_length = filter_length
-        self.stride = 1
-        self.input_layer = input_layer
-        self.weights_std = numpy.float32(weights_std)
-        self.init_bias_value = numpy.float32(init_bias_value)
-        self.nonlinearity = nonlinearity
-        self.flip_conv_dims = flip_conv_dims
-        self.dropout = dropout
-        self.mb_size = self.input_layer.mb_size
-
-        self.input_shape = self.input_layer.get_output_shape()
-        ' MB_size, N_filters, Filter_length '
-
-
-class StridedConvLayer(object):
-    def __init__(self,
-                 input_layer,
-                 n_filters,
-                 filter_length,
-                 stride, weights_std,
-                 init_bias_value,
-                 nonlinearity=rectify,
-                 dropout=0.):
-        if filter_length % stride != 0:
-            print 'ERROR: the filter_length should be a multiple of stride '
-            raise
-        if stride == 1:
-            print 'ERROR: use the normal ConvLayer instead (stride=1) '
-            raise
-
-        self.n_filters = n_filters
-        self.filter_length = filter_length
-        self.stride = 1
-        self.input_layer = input_layer
-        self.stride = stride
-        self.weights_std = numpy.float32(weights_std)
-        self.init_bias_value = numpy.float32(init_bias_value)
-        self.nonlinearity = nonlinearity
-        self.dropout = dropout
-        self.mb_size = self.input_layer.mb_size
-
-        self.input_shape = self.input_layer.get_output_shape()
-        ' MB_size, N_filters, Filter_length '
-
-        self.filter_shape = (n_filters, self.input_shape[1], filter_length)
-
-        self.W = shared_single(3)
-        self.b = shared_single(1)
-        self.params = [self.W, self.b]
-        self.bias_params = [self.b]
-        self.reset_params()
-
-    def reset_params(self):
-        self.W.set_value(
-            numpy.random.randn(*self.filter_shape).astype(numpy.float32)
-            * self.weights_std)
-        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32)
-                         * self.init_bias_value)
-
-    def get_output_shape(self):
-        output_length = ((self.input_shape[2] - self.filter_length
-                         + self.stride) / self.stride)  # integer division
-        output_shape = (self.input_shape[0], self.n_filters, output_length)
-        return output_shape
-
-    def output(self, input=None, *args, **kwargs):
-        if input is None:
-            input = self.input_layer.output(*args, **kwargs)
-        input_shape = list(self.input_shape)  # make a mutable copy
-
-        # if the input is not a multiple of the stride, cut off the end
-        if input_shape[2] % self.stride != 0:
-            input_shape[2] = self.stride * (input_shape[2] / self.stride)
-            input_truncated = input[:, :, :input_shape[2]]  # integer division
-        else:
-            input_truncated = input
-
-        r_input_shape = (input_shape[0], input_shape[1], input_shape[2]
-                         / self.stride, self.stride)
-        r_input = input_truncated.reshape(r_input_shape)
-
-        if self.stride == self.filter_length:
-            print " better use a tensordot"
-
-            conved = T.tensordot(r_input, self.W, numpy.asarray([[1, 3],
-                                                                [1, 2]]))
-            conved = conved.dimshuffle(0, 2, 1)
-        elif self.stride == self.filter_length / 2:
-            print " better use two tensordots"
-            # define separate shapes for the even and odd parts, as they may
-            # differ depending on whether the sequence length
-            # is an even or an odd multiple of the stride.
-            length_even = input_shape[2] // self.filter_length
-            length_odd = (input_shape[2] - self.stride) // self.filter_length
-
-            r2_input_shape_even = (input_shape[0], input_shape[1], length_even,
-                                   self.filter_length)
-            r2_input_shape_odd = (input_shape[0], input_shape[1], length_odd,
-                                  self.filter_length)
-
-            r2_input_even = input[
-                :, :, :length_even
-                * self.filter_length].reshape(r2_input_shape_even)
-            r2_input_odd = input[
-                :, :, self.stride:length_odd
-                * self.filter_length + self.stride].reshape(r2_input_shape_odd)
-
-            conved_even = T.tensordot(r2_input_even,
-                                      self.W, numpy.asarray([[1, 3], [1, 2]]))
-            conved_odd = T.tensordot(r2_input_odd,
-                                     self.W, numpy.asarray([[1, 3], [1, 2]]))
-
-            conved_even = conved_even.dimshuffle(0, 2, 1)
-            conved_odd = conved_odd.dimshuffle(0, 2, 1)
-
-            conved = T.zeros((conved_even.shape[0], conved_even.shape[1],
-                              conved_even.shape[2] + conved_odd.shape[2]))
-
-            conved = T.set_subtensor(conved[:, :, ::2], conved_even)
-            conved = T.set_subtensor(conved[:, :, 1::2], conved_odd)
-
-        else:
-            " use a convolution"
-            r_filter_shape = (self.filter_shape[0], self.filter_shape[1],
-                              self.filter_shape[2] / self.stride, self.stride)
-
-            r_W = self.W.reshape(r_filter_shape)
-
-            conved = conv2d(r_input, r_W, image_shape=r_input_shape,
-                            filter_shape=r_filter_shape)
-            # get rid of the obsolete 'stride' dimension
-            conved = conved[:, :, :, 0]
-
-        return self.nonlinearity(conved + self.b.dimshuffle('x', 0, 'x'))
-
-
-class Conv2DLayer(object):
+class Conv2DLayer(Layer):
     def __init__(self,
                  input_layer,
                  n_filters,
@@ -795,20 +630,8 @@ class Conv2DLayer(object):
             raise RuntimeError("Invalid border mode: '%s'" % self.border_mode)
         return self.nonlinearity(conved + self.b.dimshuffle('x', 0, 'x', 'x'))
 
-    def rescaled_weights(self, c):
-        # c is the maximal norm of the weight vector going into a single
-        # filter.
-        weights_shape = self.W.shape
-        W_flat = self.W.reshape((weights_shape[0], T.prod(weights_shape[1:])))
-        norms = T.sqrt(T.sqr(W_flat).mean(1))
-        scale_factors = T.minimum(c / norms, 1)
-        return self.W * scale_factors.dimshuffle(0, 'x', 'x', 'x')
 
-    def rescaling_updates(self, c):
-        return [(self.W, self.rescaled_weights(c))]
-
-
-class StridedConv2DLayer(object):
+class StridedConv2DLayer(Layer):
     def __init__(self,
                  input_layer,
                  n_filters,
@@ -1090,20 +913,8 @@ class StridedConv2DLayer(object):
 
         return self.nonlinearity(conved + self.b.dimshuffle('x', 0, 'x', 'x'))
 
-    def rescaled_weights(self, c):
-        # c is the maximal norm of the weight vector going into
-        # a single filter.
-        weights_shape = self.W.shape
-        W_flat = self.W.reshape((weights_shape[0], T.prod(weights_shape[1:])))
-        norms = T.sqrt(T.sqr(W_flat).mean(1))
-        scale_factors = T.minimum(c / norms, 1)
-        return self.W * scale_factors.dimshuffle(0, 'x', 'x', 'x')
 
-    def rescaling_updates(self, c):
-        return [(self.W, self.rescaled_weights(c))]
-
-
-class ConcatenateLayer(object):
+class ConcatenateLayer(Layer):
     def __init__(self, input_layers):
         self.input_layers = input_layers
         self.params = []
@@ -1118,3 +929,21 @@ class ConcatenateLayer(object):
     def output(self, *args, **kwargs):
         inputs = [i.output(*args, **kwargs) for i in self.input_layers]
         return T.concatenate(inputs, axis=1)
+
+
+class Layer(object):
+    def __init__(self):
+        raise NotImplementedError(str(type(self)) +
+                                  " does not implement this method")
+
+    def get_output_shape(self):
+        raise NotImplementedError(str(type(self)) +
+                                  " does not implement this method")
+
+    def output(self):
+        raise NotImplementedError(str(type(self)) +
+                                  " does not implement this method")
+
+    def reset_params(self):
+        raise NotImplementedError(str(type(self)) +
+                                  " does not implement this method")

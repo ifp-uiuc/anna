@@ -21,13 +21,62 @@ import layers
 
 
 class Input2DLayer(layers.Input2DLayer):
-    """
-    Like Input2DLayer, but the data is expected to be in c01b order instead of
-    bc01.
-    """
+    def __init__(self, mb_size, n_features, width, height):
+        self.mb_size = mb_size
+        self.n_features = n_features
+        self.width = width
+        self.height = height
+        self.input_var = T.tensor4('input')
+
+        self.data_order = layers.data_order.type2
+
     def get_output_shape(self):
         # c01b instead of bc01
         return (self.n_features, self.width, self.height, self.mb_size)
+
+    def output(self, *args, **kwargs):
+        return self.input_var
+
+
+class DropoutLayer(object):
+    def __init__(self,
+                 input_layer,
+                 dropout=0.):
+        self.input_layer = input_layer
+        self.input_shape = self.input_layer.get_output_shape()
+
+        self.mb_size = self.input_layer.mb_size
+        self.n_features = self.input_layer.n_features
+        self.width = self.input_layer.width
+        self.height = self.input_layer.height
+
+        self.dropout = dropout
+
+        self.params = []
+        self.bias_params = []
+        self.trainable = False
+        self.data_order = layers.data_order.type2
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
+    def get_output_shape(self):
+        return self.input_shape
+
+    def output(self, input=None, dropout_active=True, *args, **kwargs):
+        input = self.input_layer.output()
+
+        if self.dropout > 0.:
+            retain_prob = 1 - self.dropout
+            mask = layers.srng.binomial(input.shape, p=retain_prob,
+                                        dtype='int32').astype('float32')
+            input = input / retain_prob * mask
+
+        output = input
+        return output
 
 
 class Conv2DLayer(object):
@@ -80,6 +129,15 @@ class Conv2DLayer(object):
 
         self.params = [self.W, self.b]
         self.bias_params = [self.b]
+
+        self.data_order = layers.data_order.type2
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
         self.reset_params()
 
         self.filter_acts_op = FilterActs(stride=self.stride,
@@ -165,6 +223,14 @@ class Conv2DNoBiasLayer(object):
         self.partial_sum = partial_sum
         self.pad = pad
         self.mb_size = self.input_layer.mb_size
+
+        self.data_order = layers.data_order.type2
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
 
         self.filter_shape = (n_channels, filter_size, filter_size, n_filters)
 
@@ -261,6 +327,14 @@ class Deconv2DLayer(object):
         self.params = []
         self.bias_params = [self.b]
 
+        self.data_order = layers.data_order.type2
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
         self.image_acts_op = ImageActs(stride=self.stride,
                                        partial_sum=self.partial_sum,
                                        pad=self.pad)
@@ -347,6 +421,15 @@ class DeconvUntied2DLayer(object):
         # self.params = [self.W, self.b]
         self.params = [self.W, self.b]
         self.bias_params = [self.b]
+
+        self.data_order = layers.data_order.type2
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
         self.reset_params()
 
         self.image_acts_op = ImageActs(stride=self.stride,
@@ -438,6 +521,14 @@ class Deconv2DNoBiasLayer(object):
 
         self.params = []
 
+        self.data_order = layers.data_order.type2
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
         self.image_acts_op = ImageActs(stride=self.stride,
                                        partial_sum=self.partial_sum,
                                        pad=self.pad)
@@ -487,6 +578,14 @@ class Pooling2DLayer(object):
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
 
+        self.data_order = layers.data_order.type2
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
         self.pool_op = MaxPool(ds=self.pool_size, stride=self.stride)
 
     def get_output_shape(self):
@@ -523,6 +622,14 @@ class Unpooling2DLayer(object):
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
 
+        self.data_order = layers.data_order.type2
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
         self.unpool_op = MaxPoolGrad(ds=self.pool_size, stride=self.stride,
                                      start=0)
 
@@ -549,6 +656,14 @@ class ShuffleC01BToBC01Layer(object):
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
 
+        self.data_order = layers.data_order.type1
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == layers.data_order.type2), \
+            'Input data order does not match this layer\'s data order.'
+
     def get_output_shape(self):
         input_shape = self.input_layer.get_output_shape()
         return (input_shape[3], input_shape[0], input_shape[1], input_shape[2])
@@ -569,6 +684,14 @@ class ShuffleBC01ToC01BLayer(object):
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
+
+        self.data_order = layers.data_order.type2
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == layers.data_order.type1), \
+            'Input data order does not match this layer\'s data order.'
 
     def get_output_shape(self):
         input_shape = self.input_layer.get_output_shape()

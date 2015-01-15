@@ -13,6 +13,17 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 srng = RandomStreams()
 
+
+class data_order(object):
+    _MINIBATCH_SIZE = 'minibatch-size'
+    _WIDTH = 'width'
+    _HEIGHT = 'height'
+    _CHANNELS = 'num-channels'
+    # data order, bc01 type used by theano
+    type1 = (_MINIBATCH_SIZE, _CHANNELS, _WIDTH, _HEIGHT)
+    # data order, c01b type used by cuda_convnet
+    type2 = (_CHANNELS, _WIDTH, _HEIGHT, _MINIBATCH_SIZE)
+
 # nonlinearities
 
 sigmoid = T.nnet.sigmoid
@@ -347,6 +358,8 @@ class Input2DLayer(Layer):
         self.height = height
         self.input_var = T.tensor4('input')
 
+        self.data_order = data_order.type1
+
     def get_output_shape(self):
         return (self.mb_size, self.n_features, self.width, self.height)
 
@@ -391,6 +404,14 @@ class Pooling2DLayer(Layer):
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
 
+        self.data_order = data_order.type1
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
     def get_output_shape(self):
         output_shape = list(self.input_layer.get_output_shape())
         if self.ignore_border:
@@ -424,6 +445,14 @@ class GlobalPooling2DLayer(Layer):
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layer.mb_size
+
+        self.data_order = data_order.type1
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
 
     def get_output_shape(self):
         # Removes the last 2 dimensions
@@ -581,6 +610,15 @@ class Conv2DLayer(Layer):
         self.b = shared_single(1)
         self.params = [self.W, self.b]
         self.bias_params = [self.b]
+
+        self.data_order = data_order.type1
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
         self.reset_params()
 
     def reset_params(self):
@@ -709,6 +747,15 @@ class StridedConv2DLayer(Layer):
         self.b = shared_single(1)
         self.params = [self.W, self.b]
         self.bias_params = [self.b]
+
+        self.data_order = data_order.type1
+
+        assert (len(self.input_layer.get_output_shape()) == 4), \
+            'Input must have 4 dimensions.'
+
+        assert (self.input_layer.data_order == self.data_order), \
+            'Input data order does not match this layer\'s data order.'
+
         self.reset_params()
 
     def reset_params(self):

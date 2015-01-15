@@ -146,7 +146,13 @@ for x_batch, y_batch in train_iterator:
 
 ## Incorporating Utils
 
-## Talk about using the monitor
+### Talk about using the monitor
 
 
 ## Full Experiment File
+
+## Loading From a Checkpoint
+
+
+## Initializing Parameters
+

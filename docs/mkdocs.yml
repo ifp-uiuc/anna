@@ -2,9 +2,10 @@ site_name: My Docs
 pages:
 - [index.md, Home]
 - [installation.md, Installation]
-- [write_model.md, How to write a model]
-- [use_model.md, How to use a model]
-- [train_model.md, How to train a model]
-- [load_from_checkpoint.md, Loading from a checkpoint]
-- [initialize_parameters.md, Initializing the model parameters]
+- [getting_started.md, Getting Started]
+#- [write_model.md, How to write a model]
+#- [use_model.md, How to use a model]
+#- [train_model.md, How to train a model]
+#- [load_from_checkpoint.md, Loading from a checkpoint]
+#- [initialize_parameters.md, Initializing the model parameters]
 theme: readthedocs

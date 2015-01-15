@@ -69,6 +69,9 @@ Make sure to add pylearn2 to your PYTHONPATH environment variable in your ~/.bas
 
 Then, type ` source ~/.bashrc ` in the terminal to apply the changes.
 
+(Or talk about running  python setup.py develop in top-level pylearn2 directory?, might accomplish the same thing and will also compile the Cython extensions required for e.g. pylearn2.train_extensions.window_flip)
+
+
 To check if the installation was successful, simply open up python and type:
 
     >>> import pylearn2

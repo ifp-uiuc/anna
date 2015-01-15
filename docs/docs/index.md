@@ -16,17 +16,17 @@ from anna.layers import layers, cc_layers
 class Model(SupervisedModel):
     def __init__(self):
         self.input = cc_layers.Input2D(mb_size=128,
-                                                        n_features=3,
-                                                        width=32,
-                                                        height=32)
+                                       n_features=3,
+                                       width=32,
+                                       height=32)
         self.conv1 = cc_layers.Conv2D(self.input,
-                                                         n_filters=96,
-                                                         filter_size=3,
-                                                         weights_std=0.01)
+                                      n_filters=96,
+                                      filter_size=3,
+                                      weights_std=0.01)
         self.conv2 = cc_layers.Conv2D(self.conv1,
-                                                         n_filters=96,
-                                                         filter_size=3,
-                                                         weights_std=0.01)
+                                      n_filters=96,
+                                      filter_size=3,
+                                      weights_std=0.01)
         self.conv2_shuffle = cc_layers.ShuffleCCtoStd(self.conv2)
         self.output = layers.Dense(self.conv2_shuffle)
 

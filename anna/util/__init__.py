@@ -19,6 +19,9 @@ from pylearn2.datasets import cifar10
 from pylearn2.train_extensions.window_flip import _zero_pad
 from pylearn2.utils._window_flip import random_window_and_flip_c01b
 
+from anna.layers import layers
+from anna.datasets import supervised_dataset
+
 
 def load_checkpoint(model, checkpoint_path):
     all_parameters = model.all_save_parameters_symbol
@@ -752,3 +755,90 @@ class DataAugmenter(object):
 
         out_batch *= 2
         return out_batch
+
+
+class Evaluator(object):
+    def __init__(self, model, data_container, checkpoint,
+                 preprocessor_module_list):
+        self.model = model
+        self.data_container = data_container
+        self.checkpoint = checkpoint
+        self.preprocessor = Preprocessor(preprocessor_module_list)
+        self.batch_size = model.batch
+
+        # Load parameters from checkpoint
+        load_checkpoint(self.model, self.checkpoint)
+        self._switch_off_dropout_flags()
+
+    def run(self):
+        iterator = self._get_iterator()
+
+        # Compute accuracy on each training batch
+        predictions = []
+        for x_batch, y_batch in iterator:
+            x_batch = x_batch.transpose(1, 2, 3, 0)
+            x_batch = self.preprocessor.run(x_batch)
+            batch_pred = self.model.prediction(x_batch)
+            batch_pred = numpy.argmax(batch_pred, axis=1)
+            predictions.append(batch_pred)
+
+        # Classify last training batch
+        num_samples, num_channels, height, width = self.data_container.X.shape
+        last_batch_start_ind = numpy.floor(num_samples /
+                                           self.batch_size)*self.batch_size
+        last_batch_start_ind = int(last_batch_start_ind)
+        last_batch = self.data_container.X[last_batch_start_ind:, :, :, :]
+
+        dummy_batch = numpy.zeros((self.batch_size, num_channels,
+                                   height, width), dtype=numpy.float32)
+        dummy_batch[0:last_batch.shape[0], :, :, :] = last_batch
+        dummy_batch = dummy_batch.transpose(1, 2, 3, 0)
+        dummy_batch = self.preprocessor.run(dummy_batch)
+        batch_pred = self.model.prediction(dummy_batch)
+        batch_pred = batch_pred[0:last_batch.shape[0], :]
+        batch_pred = numpy.argmax(batch_pred, axis=1)
+        predictions.append(batch_pred)
+
+        # Get all predictions
+        predictions = numpy.hstack(predictions)
+        print predictions.shape
+
+        # Compute accuracy
+        accuracy = (1.0*numpy.sum(
+            predictions == self.data_container.y))/len(self.data_container.y)
+
+        return accuracy
+
+    def set_checkpoint(self, checkpoint):
+        self.checkpoint = checkpoint
+        load_checkpoint(self.model, self.checkpoint)
+        self._switch_off_dropout_flags()
+
+    def set_preprocessor(self, preprocessor_module_list):
+        self.preprocessor = Preprocessor(preproessor_module_list)
+
+    def _switch_off_dropout_flags(self):
+        # Switch off dropout flag (if present) in every layer
+        all_layers = layers.all_layers(self.model.output)
+        for layer in all_layers:
+            if hasattr(layer, 'dropout'):
+                layer.dropout = 0.0
+        # Re-compile the model
+        self.model._compile()
+
+    def _get_iterator(self):
+        dataset = supervised_dataset.SupervisedDataset(self.data_container.X,
+                                                       self.data_container.y)
+        iterator = dataset.iterator(mode='sequential',
+                                    batch_size=self.batch_size)
+        return iterator
+
+
+class Preprocessor(object):
+    def __init__(self, module_list):
+        self.module_list = module_list
+
+    def run(self, batch):
+        for module in self.module_list:
+            batch = module.run(batch)
+        return batch

@@ -85,6 +85,22 @@ def color_augment_image(data):
     return data_out
 
 
+def gray_augment_image(data):
+    image = data.transpose(1, 2, 0)
+
+    v_factor1 = numpy.random.uniform(0.25, 4)
+    v_factor2 = numpy.random.uniform(0.7, 1.4)
+    v_factor3 = numpy.random.uniform(-0.1, 0.1)
+
+    image = (image**v_factor1)*v_factor2 + v_factor3
+
+    image[image < 0] = 0.0
+    image[image > 1] = 1.0
+
+    data_out = image.transpose(2, 0, 1)
+    return data_out
+
+
 class ReconVisualizer(object):
     def __init__(self, model, batch, steps=2000):
         self.model = model
@@ -726,11 +742,13 @@ def set_parameters_from_unsupervised_model(model, checkpoint):
 
 
 class DataAugmenter(object):
-    def __init__(self, amount_pad, window_shape, flip=True, color_on=False):
+    def __init__(self, amount_pad, window_shape, flip=True, color_on=False,
+                 gray_on=False):
         self.amount_pad = amount_pad
         self.window_shape = window_shape
         self.flip = flip
         self.color_on = color_on
+        self.gray_on = gray_on
         if len(window_shape) != 2:
             raise ValueError("window_shape should be length 2")
 
@@ -742,6 +760,8 @@ class DataAugmenter(object):
                                                       flip=self.flip)
         if self.color_on:
             x_batch_out = self._color_augment(x_batch_pad_aug)
+        elif self.gray_on:
+            x_batch_out = self._gray_augment(x_batch_pad_aug)
         else:
             x_batch_out = x_batch_pad_aug
         return x_batch_out
@@ -752,6 +772,16 @@ class DataAugmenter(object):
 
         for i in range(num_samples):
             out_batch[:, :, :, i] = color_augment_image(x_batch[:, :, :, i])
+
+        out_batch *= 2
+        return out_batch
+
+    def _gray_augment(self, x_batch):
+        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+        __, __, __, num_samples = x_batch.shape
+
+        for i in range(num_samples):
+            out_batch[:, :, :, i] = gray_augment_image(x_batch[:, :, :, i])
 
         out_batch *= 2
         return out_batch

@@ -91,6 +91,7 @@ def gray_augment_image(data):
     v_factor1 = numpy.random.uniform(0.25, 4)
     v_factor2 = numpy.random.uniform(0.7, 1.4)
     v_factor3 = numpy.random.uniform(-0.1, 0.1)
+    # print '(v1, v2, v3) = (%f, %f, %f)' % (v_factor1, v_factor2, v_factor3)
 
     image = (image**v_factor1)*v_factor2 + v_factor3
 
@@ -834,7 +835,7 @@ class Evaluator(object):
         print predictions.shape
 
         # Compute accuracy
-        accuracy = (1.0*numpy.sum(
+        accuracy = (100.0*numpy.sum(
             predictions == self.data_container.y))/len(self.data_container.y)
 
         return accuracy

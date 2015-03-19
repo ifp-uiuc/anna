@@ -39,7 +39,7 @@ def save_checkpoint(model, checkpoint_directory_name):
     tt = datetime.now()
     time_string = tt.strftime('%mm-%dd-%Hh-%Mm-%Ss')
     checkpoint_name = '%s-%s.pkl' % (model.name, time_string)
-    print(model.path)
+    # print(model.path)
     checkpoint_path = os.path.join(model.path, checkpoint_directory_name,
                                    checkpoint_name)
 
@@ -229,7 +229,7 @@ class NormReconVisualizerGrayscale(object):
             os.makedirs(sub_path)
 
         prediction = self.model.prediction(self.batch)
-        for i in range(128):
+        for i in range(self.batch.shape[3]):
             image = deepcopy(self.batch[:, :, :, i])
             image = image.transpose(1, 2, 0)
             image_min = image.min()
@@ -452,7 +452,7 @@ class Monitor(object):
         self.step_number += 1
 
 
-class Evaluator(object):
+class EvaluatorPylearn2(object):
     def __init__(self, model, dataset, steps=100):
         self.step_number = 1
         self.steps = steps

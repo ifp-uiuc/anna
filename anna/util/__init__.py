@@ -91,12 +91,19 @@ def gray_augment_image(data):
     v_factor1 = numpy.random.uniform(0.25, 4)
     v_factor2 = numpy.random.uniform(0.7, 1.4)
     v_factor3 = numpy.random.uniform(-0.1, 0.1)
+
     # print '(v1, v2, v3) = (%f, %f, %f)' % (v_factor1, v_factor2, v_factor3)
 
     image = (image**v_factor1)*v_factor2 + v_factor3
 
-    image[image < 0] = 0.0
-    image[image > 1] = 1.0
+    # image[image < 0] = 0.0
+    # image[image > 1] = 1.0
+
+    # Rescale to [0, 1] range
+    image_min = image.min()
+    image -= image_min
+    image_max = image.max()
+    image /= image_max
 
     data_out = image.transpose(2, 0, 1)
     return data_out

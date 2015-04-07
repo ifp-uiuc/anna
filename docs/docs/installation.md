@@ -43,7 +43,8 @@ Now if you open python from the terminal, you will see something like this:
 While there appear to be mulitple ways to install theano, we recommend cloning the git repository to get the most up-to-date version:
 
     $ git clone git://github.com/Theano/Theano.git
-    $ python setup.py develop
+    $ cd ./Theano
+    $ sudo python setup.py develop
     
 The second command allows you to bypass the step where you must add theano to the PYTHONPATH and makes updating easier.
 

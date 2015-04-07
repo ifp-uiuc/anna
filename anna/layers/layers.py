@@ -983,11 +983,12 @@ class StridedConv2DLayer(Layer):
 
 
 class ConcatenateLayer(Layer):
-    def __init__(self, input_layers):
+    def __init__(self, input_layers, nonlinearity=identity):
         self.input_layers = input_layers
         self.params = []
         self.bias_params = []
         self.mb_size = self.input_layers[0].mb_size
+        self.nonlinearity = nonlinearity
 
     def get_output_shape(self):
         # this assumes the layers are already flat!
@@ -996,4 +997,4 @@ class ConcatenateLayer(Layer):
 
     def output(self, *args, **kwargs):
         inputs = [i.output(*args, **kwargs) for i in self.input_layers]
-        return T.concatenate(inputs, axis=1)
+        return self.nonlinearity(T.concatenate(inputs, axis=1))

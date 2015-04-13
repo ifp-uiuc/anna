@@ -10,6 +10,8 @@ from theano.tensor.signal.conv import conv2d as sconv2d
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.nnet.conv import conv2d
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
+from theano.sandbox.cuda.basic_ops import gpu_contiguous
+from theano.sandbox.cuda.dnn import GpuDnnConv
 
 srng = RandomStreams()
 
@@ -327,7 +329,7 @@ class InputLayer(Layer):
         self.mb_size = mb_size
         self.n_features = n_features
         self.length = length
-        self.input_var = T.tensor3('input')
+        self.input_var = T.ftensor3('input')
 
     def get_output_shape(self):
         return (self.mb_size, self.n_features, self.length)
@@ -343,7 +345,7 @@ class FlatInputLayer(InputLayer):
     def __init__(self, mb_size, n_features):
         self.mb_size = mb_size
         self.n_features = n_features
-        self.input_var = T.matrix('input')
+        self.input_var = T.fmatrix('input')
 
     def get_output_shape(self):
         return (self.mb_size, self.n_features)
@@ -361,7 +363,7 @@ class Input2DLayer(Layer):
         self.n_features = n_features
         self.width = width
         self.height = height
-        self.input_var = T.tensor4('input')
+        self.input_var = T.ftensor4('input')
 
         self.data_order = data_order.type1
 
@@ -397,43 +399,39 @@ class PoolingLayer(Layer):
         return max_pool_2d(input, (1, self.ds_factor), self.ignore_border)
 
 
-class Pooling2DLayer(Layer):
-    def __init__(self, input_layer, pool_size, ignore_border=False):
-        ''' pool_size is a tuple.
-        '''
-        self.pool_size = pool_size
-        self.input_layer = input_layer
-        self.ignore_border = ignore_border
-        self.trainable = True
+class Pool2DLayer(object):
+    def __init__(self,
+                 input,
+                 filter_size,
+                 stride=(2, 2)):
+
+        self.input = input
+        self.filter_size = filter_size
+        self.n_channels = self.input.n_features
+        self.n_features = self.n_channels
+        self.stride = stride
+
+        self.trainable = False
         self.params = []
-        self.bias_params = []
-        self.mb_size = self.input_layer.mb_size
-
-        self.data_order = data_order.type1
-
-        assert (len(self.input_layer.get_output_shape()) == 4), \
-            'Input must have 4 dimensions.'
-
-        assert (self.input_layer.data_order == self.data_order), \
-            'Input data order does not match this layer\'s data order.'
 
     def get_output_shape(self):
-        output_shape = list(self.input_layer.get_output_shape())
-        if self.ignore_border:
-            output_shape[-2] = int(numpy.floor(float(output_shape[-2]) /
-                                               self.pool_size[0]))
-            output_shape[-1] = int(numpy.floor(float(output_shape[-1]) /
-                                               self.pool_size[1]))
-        else:
-            output_shape[-2] = int(numpy.ceil(float(output_shape[-2]) /
-                                              self.pool_size[0]))
-            output_shape[-1] = int(numpy.ceil(float(output_shape[-1]) /
-                                              self.pool_size[1]))
-        return tuple(output_shape)
+        input_shape = self.input.get_output_shape()
+        filter_shape = (self.n_features, self.n_channels,
+                        self.filter_size, self.filter_size)
+        return GpuDnnConv.get_out_shape(input_shape,
+                                        filter_shape,
+                                        'valid',
+                                        self.stride)
 
-    def output(self, *args, **kwargs):
-        input = self.input_layer.output(*args, **kwargs)
-        return max_pool_2d(input, self.pool_size, self.ignore_border)
+    def output(self):
+        input = self.input.output()
+        ws = (self.filter_size, self.filter_size)
+
+        contiguous_input = gpu_contiguous(input)
+        output = theano.sandbox.cuda.dnn.dnn_pool(contiguous_input,
+                                                  ws,
+                                                  stride=self.stride)
+        return output
 
 
 class GlobalPooling2DLayer(Layer):
@@ -621,383 +619,53 @@ class DenseBatchNormLayer(Layer):
         self.beta.set_value(beta_values)
 
 
-class Conv2DLayer(Layer):
-    def __init__(self, input_layer, n_filters, filter_width, filter_height,
-                 weights_std, init_bias_value,
-                 nonlinearity=rectify,
-                 dropout=0.,
-                 dropout_tied=False,
-                 border_mode='valid',
+class Conv2DLayer(object):
+    def __init__(self,
+                 input,
+                 n_features,
+                 filter_size,
+                 weights_std,
+                 stride=(1, 1),
                  trainable=True):
-        self.n_filters = n_filters
-        self.filter_width = filter_width
-        self.filter_height = filter_height
-        self.input_layer = input_layer
-        self.weights_std = numpy.float32(weights_std)
-        self.init_bias_value = numpy.float32(init_bias_value)
-        self.nonlinearity = nonlinearity
-        self.dropout = dropout
-        # if this is on, the same dropout mask is applied across the entire
-        # input map
-        self.dropout_tied = dropout_tied
-        self.border_mode = border_mode
-        self.mb_size = self.input_layer.mb_size
 
-        self.input_shape = self.input_layer.get_output_shape()
-        ' mb_size, n_filters, filter_width, filter_height '
+        self.input = input
+        self.n_features = n_features
+        self.filter_size = filter_size
+        self.n_channels = self.input.n_features
 
-        self.filter_shape = (n_filters, self.input_shape[1], filter_width,
-                             filter_height)
+        self.filter_shape = (self.n_features,
+                             self.n_channels,
+                             self.filter_size,
+                             self.filter_size)
+
+        self.weights_std = weights_std
+        self.stride = stride
 
         self.trainable = trainable
+
         self.W = shared_single(4)
-        self.b = shared_single(1)
-        self.params = [self.W, self.b]
-        self.bias_params = [self.b]
-
-        self.data_order = data_order.type1
-
-        assert (len(self.input_layer.get_output_shape()) == 4), \
-            'Input must have 4 dimensions.'
-
-        assert (self.input_layer.data_order == self.data_order), \
-            'Input data order does not match this layer\'s data order.'
-
+        self.params = [self.W]
         self.reset_params()
-
-    def reset_params(self):
-        self.W.set_value(
-            numpy.random.randn(*self.filter_shape).astype(numpy.float32) *
-            self.weights_std)
-        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32) *
-                         self.init_bias_value)
 
     def get_output_shape(self):
-        if self.border_mode == 'valid':
-            output_width = self.input_shape[2] - self.filter_width + 1
-            output_height = self.input_shape[3] - self.filter_height + 1
-        elif self.border_mode == 'full':
-            output_width = self.input_shape[2] + self.filter_width - 1
-            output_height = self.input_shape[3] + self.filter_width - 1
-        elif self.border_mode == 'same':
-            output_width = self.input_shape[2]
-            output_height = self.input_shape[3]
-        else:
-            raise RuntimeError("Invalid border mode: '%s'" % self.border_mode)
+        input_shape = self.input.get_output_shape()
+        return GpuDnnConv.get_out_shape(input_shape,
+                                        self.filter_shape,
+                                        'valid',
+                                        self.stride)
 
-        output_shape = (self.input_shape[0], self.n_filters, output_width,
-                        output_height)
-        return output_shape
-
-    def output(self, input=None, dropout_active=True, *args, **kwargs):
-        if input is None:
-            input = self.input_layer.output(dropout_active=dropout_active,
-                                            *args, **kwargs)
-
-        if dropout_active and (self.dropout > 0.):
-            retain_prob = 1 - self.dropout
-            if self.dropout_tied:
-                # tying of the dropout masks across the entire feature maps,
-                # so broadcast across the feature maps.
-                mask = srng.binomial(
-                    (input.shape[0], input.shape[1]),
-                    p=retain_prob,
-                    dtype='int32').astype('float32').dimshuffle(0, 1, 'x', 'x')
-            else:
-                mask = srng.binomial(input.shape,
-                                     p=retain_prob,
-                                     dtype='int32').astype('float32')
-                # apply the input mask and rescale the input accordingly.
-                # By doing this it's no longer necessary to rescale the weights
-                # at test time.
-            input = input / retain_prob * mask
-
-        if self.border_mode in ['valid', 'full']:
-            conved = conv2d(input, self.W,
-                            subsample=(1, 1),
-                            image_shape=self.input_shape,
-                            filter_shape=self.filter_shape,
-                            border_mode=self.border_mode)
-        elif self.border_mode == 'same':
-            conved = conv2d(input, self.W,
-                            subsample=(1, 1),
-                            image_shape=self.input_shape,
-                            filter_shape=self.filter_shape,
-                            border_mode='full')
-            shift_x = (self.filter_width - 1) // 2
-            shift_y = (self.filter_height - 1) // 2
-            conved = conved[:, :, shift_x:self.input_shape[2] + shift_x,
-                            shift_y:self.input_shape[3] + shift_y]
-        else:
-            raise RuntimeError("Invalid border mode: '%s'" % self.border_mode)
-        return self.nonlinearity(conved + self.b.dimshuffle('x', 0, 'x', 'x'))
-
-
-class StridedConv2DLayer(Layer):
-    def __init__(self, input_layer, n_filters, filter_width, filter_height,
-                 stride_x, stride_y, weights_std, init_bias_value,
-                 nonlinearity=rectify,
-                 dropout=0.,
-                 dropout_tied=False,
-                 implementation='convolution'):
-        """
-        implementation can be:
-            - convolution: use conv2d with the subsample parameter
-            - unstrided: use conv2d + reshaping so the result is a convolution
-                with strides (1, 1)
-            - single_dot: use a large tensor product
-            - many_dots: use a bunch of tensor products
-        """
-        self.n_filters = n_filters
-        self.filter_width = filter_width
-        self.filter_height = filter_height
-        self.stride_x = stride_x
-        self.stride_y = stride_y
-        self.input_layer = input_layer
-        self.weights_std = numpy.float32(weights_std)
-        self.init_bias_value = numpy.float32(init_bias_value)
-        self.nonlinearity = nonlinearity
-        self.dropout = dropout
-        # if this is on, the same dropout mask is applied to the whole map.
-        self.dropout_tied = dropout_tied
-        # this controls whether the convolution is computed using theano's op,
-        # as a bunch of tensor products, or a single stacked tensor product.
-        self.implementation = implementation
-        self.mb_size = self.input_layer.mb_size
-
-        self.input_shape = self.input_layer.get_output_shape()
-        ' mb_size, n_filters, filter_width, filter_height '
-
-        self.filter_shape = (n_filters, self.input_shape[1], filter_width,
-                             filter_height)
-
-        if self.filter_width % self.stride_x != 0:
-            raise RuntimeError("""Filter width is not a multiple of the stride
-                               in the X direction""")
-
-        if self.filter_height % self.stride_y != 0:
-            raise RuntimeError("""Filter height is not a multiple of the stride
-                               in the Y direction""")
-
-        self.W = shared_single(4)
-        self.b = shared_single(1)
-        self.params = [self.W, self.b]
-        self.bias_params = [self.b]
-
-        self.data_order = data_order.type1
-
-        assert (len(self.input_layer.get_output_shape()) == 4), \
-            'Input must have 4 dimensions.'
-
-        assert (self.input_layer.data_order == self.data_order), \
-            'Input data order does not match this layer\'s data order.'
-
-        self.reset_params()
+    def output(self):
+        input = self.input.output()
+        contiguous_input = gpu_contiguous(input)
+        contiguous_filters = gpu_contiguous(self.W)
+        output = theano.sandbox.cuda.dnn.dnn_conv(contiguous_input,
+                                                  contiguous_filters,
+                                                  subsample=self.stride)
+        return output
 
     def reset_params(self):
         self.W.set_value(numpy.random.randn(*self.filter_shape).astype(
             numpy.float32) * self.weights_std)
-        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32) *
-                         self.init_bias_value)
-
-    def get_output_shape(self):
-        output_width = (self.input_shape[2] - self.filter_width + self.stride_x
-                        ) // self.stride_x  # integer division
-        output_height = (
-            self.input_shape[3] - self.filter_height + self.stride_y
-        ) // self.stride_y  # integer division
-        output_shape = (self.input_shape[0], self.n_filters, output_width,
-                        output_height)
-        return output_shape
-
-    def output(self, input=None, dropout_active=True, *args, **kwargs):
-        if input is None:
-            input = self.input_layer.output(dropout_active=dropout_active,
-                                            *args, **kwargs)
-
-        if dropout_active and (self.dropout > 0.):
-            retain_prob = 1 - self.dropout
-            if self.dropout_tied:
-                # tying of the dropout masks across the entire feature maps, so
-                # broadcast across the feature maps.
-                mask = srng.binomial(
-                    (input.shape[0], input.shape[1]),
-                    p=retain_prob,
-                    dtype='int32').astype('float32').dimshuffle(0, 1, 'x', 'x')
-            else:
-                mask = srng.binomial(input.shape,
-                                     p=retain_prob,
-                                     dtype='int32').astype('float32')
-                # apply the input mask and rescale the input accordingly.
-                # By doing this it's no longer necessary to rescale the weights
-                # at test time.
-            input = input / retain_prob * mask
-
-        output_shape = self.get_output_shape()
-        W_flipped = self.W[:, :, ::-1, ::-1]
-
-        # crazy convolution stuff!
-        if self.implementation == 'single_dot':
-            # one stacked product
-            num_steps_x = self.filter_width // self.stride_x
-            num_steps_y = self.filter_height // self.stride_y
-
-            padded_width = (
-                (self.input_shape[2] // self.filter_width) * self.filter_width
-                + (num_steps_x - 1) * self.stride_x)
-            padded_height = (
-                (self.input_shape[3] // self.filter_height) *
-                self.filter_height + (num_steps_y - 1) * self.stride_y)
-
-            truncated_width = min(self.input_shape[2], padded_width)
-            truncated_height = min(self.input_shape[3], padded_height)
-            input_truncated = input[:, :, :truncated_width, :truncated_height]
-
-            input_padded_shape = (self.input_shape[0], self.input_shape[1],
-                                  padded_width, padded_height)
-            input_padded = T.zeros(input_padded_shape)
-            input_padded = T.set_subtensor(
-                input_padded[:, :, :truncated_width, :truncated_height],
-                input_truncated)
-
-            inputs_x = []
-            for num_x in xrange(num_steps_x):
-                inputs_y = []
-                for num_y in xrange(num_steps_y):
-                    # pixel shift in the x direction
-                    shift_x = num_x * self.stride_x
-                    # pixel shift in the y direction
-                    shift_y = num_y * self.stride_y
-
-                    width = ((input_padded_shape[2] - shift_x) //
-                             self.filter_width)
-                    height = ((input_padded_shape[3] - shift_y) //
-                              self.filter_height)
-
-                    r_input_shape = (input_padded_shape[0],
-                                     input_padded_shape[1], width,
-                                     self.filter_width, height,
-                                     self.filter_height)
-
-                    r_input = input_padded[:, :, shift_x:width *
-                                           self.filter_width
-                                           + shift_x, shift_y:height *
-                                           self.filter_height + shift_y]
-                    r_input = r_input.reshape(r_input_shape)
-
-                    inputs_y.append(r_input)
-
-                inputs_x.append(T.stack(*inputs_y))
-
-            inputs_stacked = T.stack(*inputs_x)
-            r_conved = T.tensordot(inputs_stacked, W_flipped,
-                                   numpy.asarray([[3, 5, 7], [1, 2, 3]]))
-
-            r_conved = r_conved.dimshuffle(2, 5, 3, 0, 4, 1)
-            conved = r_conved.reshape((r_conved.shape[0], r_conved.shape[1],
-                                       r_conved.shape[2] * r_conved.shape[3],
-                                       r_conved.shape[4] * r_conved.shape[5]))
-
-            # remove padding
-            conved = conved[:, :, :output_shape[2], :output_shape[3]]
-
-        elif self.implementation == 'many_dots':
-            # separate products
-            num_steps_x = self.filter_width // self.stride_x
-            num_steps_y = self.filter_height // self.stride_y
-
-            conved = T.zeros(output_shape)
-
-            for num_x in xrange(num_steps_x):
-                for num_y in xrange(num_steps_y):
-                    # pixel shift in the x direction
-                    shift_x = num_x * self.stride_x
-                    # pixel shift in the y direction
-                    shift_y = num_y * self.stride_y
-
-                    width = ((self.input_shape[2] - shift_x) //
-                             self.filter_width)
-                    height = ((self.input_shape[3] - shift_y) //
-                              self.filter_height)
-
-                    # we can safely skip this product, it doesn't contribute to
-                    # the final convolution.
-                    if (width == 0) or (height == 0):
-                        continue
-
-                    r_input_shape = (self.input_shape[0], self.input_shape[1],
-                                     width, self.filter_width, height,
-                                     self.filter_height)
-
-                    r_input = input[:, :, shift_x:width * self.filter_width +
-                                    shift_x, shift_y:height *
-                                    self.filter_height + shift_y]
-                    r_input = r_input.reshape(r_input_shape)
-
-                    r_conved = T.tensordot(r_input, W_flipped,
-                                           numpy.asarray([[1, 3, 5], [1, 2,
-                                                                      3]]))
-                    r_conved = r_conved.dimshuffle(0, 3, 1, 2)
-                    conved = T.set_subtensor(
-                        conved[:, :, num_x::num_steps_x, num_y::num_steps_y],
-                        r_conved)
-
-        elif self.implementation == 'unstrided':
-            num_steps_x = self.filter_width // self.stride_x
-            num_steps_y = self.filter_height // self.stride_y
-
-            # input sizes need to be multiples of the strides, truncate to
-            # correct sizes.
-            truncated_width = ((self.input_shape[2] // self.stride_x) *
-                               self.stride_x)
-            truncated_height = ((self.input_shape[3] // self.stride_y) *
-                                self.stride_y)
-            input_truncated = input[:, :, :truncated_width, :truncated_height]
-
-            r_input_shape = (self.input_shape[0], self.input_shape[1],
-                             truncated_width // self.stride_x, self.stride_x,
-                             truncated_height // self.stride_y, self.stride_y)
-
-            r_input = input_truncated.reshape(r_input_shape)
-
-            # fold strides into the feature maps dimension
-            r_input_folded_shape = (self.input_shape[0], self.input_shape[1] *
-                                    self.stride_x * self.stride_y,
-                                    truncated_width // self.stride_x,
-                                    truncated_height // self.stride_y)
-            r_input_folded = r_input.transpose(0, 1, 3, 5, 2,
-                                               4).reshape(r_input_folded_shape)
-
-            r_filter_shape = (self.filter_shape[0], self.filter_shape[1],
-                              num_steps_x, self.stride_x, num_steps_y,
-                              self.stride_y)
-            # need to operate on the flipped W here, else things get hairy.
-            r_W_flipped = W_flipped.reshape(r_filter_shape)
-
-            # fold strides into the feature maps dimension
-            r_filter_folded_shape = (self.filter_shape[0], self.filter_shape[1]
-                                     * self.stride_x * self.stride_y,
-                                     num_steps_x, num_steps_y)
-            r_W_flipped_folded = r_W_flipped.transpose(
-                0, 1, 3, 5, 2, 4).reshape(r_filter_folded_shape)
-            r_W_folded = r_W_flipped_folded[:, :, ::-1, ::-1]  # unflip
-
-            conved = conv2d(r_input_folded, r_W_folded,
-                            subsample=(1, 1),
-                            image_shape=r_input_folded_shape,
-                            filter_shape=r_filter_folded_shape)
-            # 'conved' should already have the right shape
-
-        elif self.implementation == 'convolution':
-            conved = conv2d(input, self.W,
-                            subsample=(self.stride_x, self.stride_y),
-                            image_shape=self.input_shape,
-                            filter_shape=self.filter_shape)
-        else:
-            raise RuntimeError("Invalid implementation string: '%s'" %
-                               self.implementation)
-
-        return self.nonlinearity(conved + self.b.dimshuffle('x', 0, 'x', 'x'))
 
 
 class ConvBatchNormLayer(Layer):

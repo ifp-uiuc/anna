@@ -29,8 +29,8 @@ def load_checkpoint(model, checkpoint_path):
     checkpoint = cPickle.load(f)
     f.close()
 
-    [model_param.set_value(checkpoint_param) for model_param, checkpoint_param
-     in zip(all_parameters, checkpoint)]
+    [model_param.set_value(checkpoint_param)
+     for model_param, checkpoint_param in zip(all_parameters, checkpoint)]
 
 
 def save_checkpoint(model, checkpoint_directory_name):
@@ -50,7 +50,7 @@ def save_checkpoint(model, checkpoint_directory_name):
 
 
 def rescale(data):
-    data = data/2.0*255.0
+    data = data / 2.0 * 255.0
     data[data > 255.0] = 255.0
     return data
 
@@ -64,13 +64,13 @@ def color_augment_image(data):
     s_factor2 = numpy.random.uniform(0.7, 1.4)
     s_factor3 = numpy.random.uniform(-0.1, 0.1)
 
-    hsv[:, :, 1] = (hsv[:, :, 1]**s_factor1)*s_factor2 + s_factor3
+    hsv[:, :, 1] = (hsv[:, :, 1] ** s_factor1) * s_factor2 + s_factor3
 
     v_factor1 = numpy.random.uniform(0.25, 4)
     v_factor2 = numpy.random.uniform(0.7, 1.4)
     v_factor3 = numpy.random.uniform(-0.1, 0.1)
 
-    hsv[:, :, 2] = (hsv[:, :, 2]**v_factor1)*v_factor2 + v_factor3
+    hsv[:, :, 2] = (hsv[:, :, 2] ** v_factor1) * v_factor2 + v_factor3
 
     # Color
     h_factor = numpy.random.uniform(-0.1, 0.1)
@@ -94,7 +94,7 @@ def gray_augment_image(data):
 
     # print '(v1, v2, v3) = (%f, %f, %f)' % (v_factor1, v_factor2, v_factor3)
 
-    image = (image**v_factor1)*v_factor2 + v_factor3
+    image = (image ** v_factor1) * v_factor2 + v_factor3
 
     # image[image < 0] = 0.0
     # image[image > 1] = 1.0
@@ -185,12 +185,12 @@ class NormReconVisualizer(object):
 
             recon = numpy.array(prediction[:, :, :, i])
             recon = recon.transpose(1, 2, 0)
-            recon2 = deepcopy(recon)*1.0
+            recon2 = deepcopy(recon) * 1.0
 
             recon_mask = (numpy.sum(recon == 0.0, axis=2) < 3)
-            # recon_mask = 255*(numpy.tile(recon_mask[:,:,None],(1,1,3)))
-            recon_mask = 255*(numpy.tile(recon_mask[:, :, None],
-                                         (1, 1, image.shape[2])))
+            # recon_mask = 255*(numpy.tile(recon_mask[:, :,None],(1,1,3)))
+            recon_mask = 255 * (numpy.tile(recon_mask[:, :, None],
+                                           (1, 1, image.shape[2])))
 
             recon -= image_min
             recon /= image_max
@@ -200,9 +200,7 @@ class NormReconVisualizer(object):
             recon2 /= recon2.max()
             recon2 *= 255
 
-            image_array = numpy.uint8(numpy.hstack((image,
-                                                    recon,
-                                                    recon2,
+            image_array = numpy.uint8(numpy.hstack((image, recon, recon2,
                                                     recon_mask)))
 
             to_save = Image.fromarray(image_array)
@@ -247,11 +245,11 @@ class NormReconVisualizerGrayscale(object):
 
             recon = numpy.array(prediction[:, :, :, i])
             recon = recon.transpose(1, 2, 0)
-            recon2 = deepcopy(recon)*1.0
+            recon2 = deepcopy(recon) * 1.0
 
             recon_mask = (numpy.sum(recon == 0.0, axis=2) < 3)
-            recon_mask = 255*(numpy.tile(recon_mask[:, :, None],
-                                         (1, 1, image.shape[2])))
+            recon_mask = 255 * (numpy.tile(recon_mask[:, :, None],
+                                           (1, 1, image.shape[2])))
 
             recon -= image_min
             recon /= image_max
@@ -261,9 +259,7 @@ class NormReconVisualizerGrayscale(object):
             recon2 /= recon2.max()
             recon2 *= 255
 
-            image_array = numpy.uint8(numpy.hstack((image,
-                                                    recon,
-                                                    recon2,
+            image_array = numpy.uint8(numpy.hstack((image, recon, recon2,
                                                     recon_mask)))
             # Needed for grayscale images. If color, has no effect.
             image_array = numpy.tile(image_array, (1, 1, 3))
@@ -300,8 +296,8 @@ class FilterVisualizer(object):
         img_list = []
         k = 0
 
-        rows = W.shape[3]/16
-        bar = 0.5*numpy.ones((W.shape[0], 1, 3))
+        rows = W.shape[3] / 16
+        bar = 0.5 * numpy.ones((W.shape[0], 1, 3))
         for i in range(rows):
             row_list.append(bar)
             for j in range(16):
@@ -309,25 +305,25 @@ class FilterVisualizer(object):
                 W0 -= W0.min()
                 W0 /= W0.max()
 
-                # W0[:,:,0] -= W0[:,:,0].min()
-                # W0[:,:,0] /= W0[:,:,0].max()
-                # W0[:,:,1] -= W0[:,:,1].min()
-                # W0[:,:,1] /= W0[:,:,1].max()
-                # W0[:,:,2] -= W0[:,:,2].min()
-                # W0[:,:,2] /= W0[:,:,2].max()
+                # W0[:, :,0] -= W0[:, :,0].min()
+                # W0[:, :,0] /= W0[:, :,0].max()
+                # W0[:, :,1] -= W0[:, :,1].min()
+                # W0[:, :,1] /= W0[:, :,1].max()
+                # W0[:, :,2] -= W0[:, :,2].min()
+                # W0[:, :,2] /= W0[:, :,2].max()
                 row_list.append(W0)
                 row_list.append(bar)
                 k += 1
             row_image = numpy.hstack(row_list)
             row_list = []
-            bar_h = 0.5*numpy.ones((1, row_image.shape[1], 3))
+            bar_h = 0.5 * numpy.ones((1, row_image.shape[1], 3))
             img_list.append(bar_h)
             img_list.append(row_image)
         img_list.append(bar_h)
         img_image = numpy.vstack(img_list)
 
-        to_save = Image.fromarray(numpy.uint8(255*img_image))
-        filename = 'filters_'+time_string+'.png'
+        to_save = Image.fromarray(numpy.uint8(255 * img_image))
+        filename = 'filters_' + time_string + '.png'
         filepath = os.path.join(self.save_path, filename)
         to_save.save(filepath)
 
@@ -358,8 +354,8 @@ class FilterVisualizerGrayscale(object):
         img_list = []
         k = 0
 
-        rows = W.shape[3]/16
-        bar = 0.5*numpy.ones((W.shape[0], 1, 3))
+        rows = W.shape[3] / 16
+        bar = 0.5 * numpy.ones((W.shape[0], 1, 3))
         for i in range(rows):
             row_list.append(bar)
             for j in range(16):
@@ -368,25 +364,25 @@ class FilterVisualizerGrayscale(object):
                 W0 /= W0.max()
                 W0 = numpy.tile(W0, (1, 1, 3))
 
-                # W0[:,:,0] -= W0[:,:,0].min()
-                # W0[:,:,0] /= W0[:,:,0].max()
-                # W0[:,:,1] -= W0[:,:,1].min()
-                # W0[:,:,1] /= W0[:,:,1].max()
-                # W0[:,:,2] -= W0[:,:,2].min()
-                # W0[:,:,2] /= W0[:,:,2].max()
+                # W0[:, :,0] -= W0[:, :,0].min()
+                # W0[:, :,0] /= W0[:, :,0].max()
+                # W0[:, :,1] -= W0[:, :,1].min()
+                # W0[:, :,1] /= W0[:, :,1].max()
+                # W0[:, :,2] -= W0[:, :,2].min()
+                # W0[:, :,2] /= W0[:, :,2].max()
                 row_list.append(W0)
                 row_list.append(bar)
                 k += 1
             row_image = numpy.hstack(row_list)
             row_list = []
-            bar_h = 0.5*numpy.ones((1, row_image.shape[1], 3))
+            bar_h = 0.5 * numpy.ones((1, row_image.shape[1], 3))
             img_list.append(bar_h)
             img_list.append(row_image)
         img_list.append(bar_h)
         img_image = numpy.vstack(img_list)
 
-        to_save = Image.fromarray(numpy.uint8(255*img_image))
-        filename = 'filters_'+time_string+'.png'
+        to_save = Image.fromarray(numpy.uint8(255 * img_image))
+        filename = 'filters_' + time_string + '.png'
         filepath = os.path.join(self.save_path, filename)
         to_save.save(filepath)
 
@@ -397,8 +393,13 @@ class Monitor(object):
     big_errors = []
     big_times = []
 
-    def __init__(self, model, step_number=0, best=1, short_steps=10,
-                 long_steps=50, save_steps=2000, test_steps=50,
+    def __init__(self, model,
+                 step_number=0,
+                 best=1,
+                 short_steps=10,
+                 long_steps=50,
+                 save_steps=2000,
+                 test_steps=50,
                  checkpoint_directory='checkpoints'):
         self.step_number = step_number
         self.best = best
@@ -412,9 +413,8 @@ class Monitor(object):
 
         # Check if model.path exists, if not create it
         # (with a checkpoint folder)
-        if model.path and not os.path.exists(os.path.join(
-                                             model.path,
-                                             self.checkpoint_directory)):
+        if model.path and not os.path.exists(
+                os.path.join(model.path, self.checkpoint_directory)):
             os.makedirs(os.path.join(model.path, self.checkpoint_directory))
 
     def start(self):
@@ -429,7 +429,7 @@ class Monitor(object):
 
     def stop(self, error):
         self.toc = time()
-        _time = self.toc-self.tic
+        _time = self.toc - self.tic
         self.errors.append(error)
         self.times.append(_time)
         self.big_errors.append(error)
@@ -452,8 +452,7 @@ class Monitor(object):
             mean_error = numpy.mean(self.errors)
             mean_time = numpy.mean(self.times)
             print '%d, train error: %.5f, time: %.2f' % (self.step_number,
-                                                         mean_error,
-                                                         mean_time)
+                                                         mean_error, mean_time)
             self.errors = []
             self.times = []
         self.step_number += 1
@@ -467,10 +466,12 @@ class EvaluatorPylearn2(object):
         self.dataset = dataset
 
     def run(self):
-        input_convspace = Conv2DSpace(shape=(32, 32), num_channels=3,
+        input_convspace = Conv2DSpace(shape=(32, 32),
+                                      num_channels=3,
                                       axes=('c', 0, 1, 'b'))
         data_specs = (input_convspace, 'features')
-        iterator = self.dataset.iterator(mode='sequential', batch_size=128,
+        iterator = self.dataset.iterator(mode='sequential',
+                                         batch_size=128,
                                          data_specs=data_specs)
         errors = []
         if self.step_number % self.steps == 0:
@@ -479,11 +480,10 @@ class EvaluatorPylearn2(object):
                 error = self.model.eval(batch)
                 errors.append(error)
             toc = time()
-            _time = toc-tic
+            _time = toc - tic
             mean_error = numpy.mean(errors)
             print '%d, test error: %.3f, time: %.2f' % (self.step_number,
-                                                        mean_error,
-                                                        _time)
+                                                        mean_error, _time)
         self.step_number += 1
 
 
@@ -535,8 +535,8 @@ def get_cifar_iterator_reduced(which_set,
     if which_set == 'train':
         reduced_dataset_path = '/data/CIFAR-10/reduced/cifar10_' + \
             str(num_samples_per_class)
-        reduced_dataset_file_path = os.path.join(reduced_dataset_path, 'split_'
-                                                 + str(which_split)+'.pkl')
+        reduced_dataset_file_path = os.path.join(
+            reduced_dataset_path, 'split_' + str(which_split) + '.pkl')
         if not os.path.exists(reduced_dataset_file_path):
             raise Exception('Reduced dataset does not seem to exist.')
 
@@ -587,7 +587,7 @@ class Normer(object):
 
         # magic numbers that make things work for stl10
         self.filter_size = 7
-        self.pad = self.filter_size/2  # -1
+        self.pad = self.filter_size / 2  # -1
         self.num_channels = 3
         self.num_filters = 16
         input = T.ftensor4(name='input')
@@ -599,22 +599,20 @@ class Normer(object):
                                          FilterActs(pad=3)(gpu_input,
                                                            gpu_filter))
         n = self.num_channels * self.filter_size * self.filter_size
-        self.w = numpy.float32(numpy.ones((self.num_channels,
+        self.w = numpy.float32(numpy.ones((self.num_channels, self.filter_size,
                                            self.filter_size,
-                                           self.filter_size,
-                                           self.num_filters)))/n
+                                           self.num_filters))) / n
 
     def run(self, x_batch):
         mean_batch = self.conv_func(x_batch, self.w)
         mean_batch = numpy.tile(numpy.array(
-                                mean_batch[0, :, :, :])[None, :, :],
-                                (self.num_channels, 1, 1, 1))
+            mean_batch[0, :, :, :])[None, :, :],
+            (self.num_channels, 1, 1, 1))
         diff_batch = x_batch - mean_batch
-        std_batch = self.conv_func(diff_batch**2, self.w)
-        std_batch = numpy.tile(numpy.array(
-                               std_batch[0, :, :, :])[None, :, :],
+        std_batch = self.conv_func(diff_batch ** 2, self.w)
+        std_batch = numpy.tile(numpy.array(std_batch[0, :, :, :])[None, :, :],
                                (self.num_channels, 1, 1, 1))
-        norm_batch = diff_batch/(numpy.array(std_batch)**(1/2))
+        norm_batch = diff_batch / (numpy.array(std_batch) ** (1 / 2))
         return norm_batch
 
 
@@ -623,7 +621,7 @@ class Normer2(object):
 
         # magic numbers that make things work for stl10
         self.filter_size = filter_size
-        self.pad = self.filter_size/2  # -1
+        self.pad = self.filter_size / 2  # -1
         self.num_channels = num_channels
         self.num_filters = 16
         input = T.ftensor4(name='input')
@@ -635,22 +633,20 @@ class Normer2(object):
                                          FilterActs(pad=self.pad)(gpu_input,
                                                                   gpu_filter))
         n = self.num_channels * self.filter_size * self.filter_size
-        self.w = numpy.float32(numpy.ones((self.num_channels,
+        self.w = numpy.float32(numpy.ones((self.num_channels, self.filter_size,
                                            self.filter_size,
-                                           self.filter_size,
-                                           self.num_filters)))/n
+                                           self.num_filters))) / n
 
     def run(self, x_batch):
         mean_batch = self.conv_func(x_batch, self.w)
         mean_batch = numpy.tile(numpy.array(
-                                mean_batch[0, :, :, :])[None, :, :],
-                                (self.num_channels, 1, 1, 1))
+            mean_batch[0, :, :, :])[None, :, :],
+            (self.num_channels, 1, 1, 1))
         diff_batch = x_batch - mean_batch
-        std_batch = self.conv_func(diff_batch**2, self.w)
-        std_batch = numpy.tile(numpy.array(
-                               std_batch[0, :, :, :])[None, :, :],
+        std_batch = self.conv_func(diff_batch ** 2, self.w)
+        std_batch = numpy.tile(numpy.array(std_batch[0, :, :, :])[None, :, :],
                                (self.num_channels, 1, 1, 1))
-        norm_batch = diff_batch/(numpy.array(std_batch)**(1/2))
+        norm_batch = diff_batch / (numpy.array(std_batch) ** (1 / 2))
         return norm_batch
 
 
@@ -664,18 +660,16 @@ class PatchGrabber(object):
         image_size = x_batch.shape[1]
         batch_size = x_batch.shape[-1]
 
-        patches = numpy.zeros((self.num_channels,
-                               self.patch_size,
-                               self.patch_size,
-                               self.num_patches),
+        patches = numpy.zeros((self.num_channels, self.patch_size,
+                               self.patch_size, self.num_patches),
                               dtype=numpy.float32)
 
         for i_patch in range(self.num_patches):
-            x_start = numpy.random.randint(image_size-self.patch_size)
-            y_start = numpy.random.randint(image_size-self.patch_size)
+            x_start = numpy.random.randint(image_size - self.patch_size)
+            y_start = numpy.random.randint(image_size - self.patch_size)
             image_id = numpy.random.randint(batch_size)
-            x_slice = slice(x_start, x_start+self.patch_size)
-            y_slice = slice(y_start, y_start+self.patch_size)
+            x_slice = slice(x_start, x_start + self.patch_size)
+            y_slice = slice(y_start, y_start + self.patch_size)
             patch = x_batch[:, x_slice, y_slice, image_id]
             patches[:, :, :, i_patch] = patch
 
@@ -724,7 +718,7 @@ class WeightVisualizer(object):
         image_list.append(long_bar)
         image_image = numpy.vstack(image_list)
 
-        to_save = Image.fromarray(numpy.uint8(255*image_image))
+        to_save = Image.fromarray(numpy.uint8(255 * image_image))
         filename = os.path.join(self.path, '%s-%s.png' % (self.name,
                                                           time_string))
         to_save.save(filename)
@@ -750,7 +744,9 @@ def set_parameters_from_unsupervised_model(model, checkpoint):
 
 
 class DataAugmenter(object):
-    def __init__(self, amount_pad, window_shape, flip=True, color_on=False,
+    def __init__(self, amount_pad, window_shape,
+                 flip=True,
+                 color_on=False,
                  gray_on=False):
         self.amount_pad = amount_pad
         self.window_shape = window_shape
@@ -823,12 +819,13 @@ class Evaluator(object):
         # Classify last training batch
         num_samples, num_channels, height, width = self.data_container.X.shape
         last_batch_start_ind = numpy.floor(num_samples /
-                                           self.batch_size)*self.batch_size
+                                           self.batch_size) * self.batch_size
         last_batch_start_ind = int(last_batch_start_ind)
         last_batch = self.data_container.X[last_batch_start_ind:, :, :, :]
 
-        dummy_batch = numpy.zeros((self.batch_size, num_channels,
-                                   height, width), dtype=numpy.float32)
+        dummy_batch = numpy.zeros((self.batch_size, num_channels, height,
+                                   width),
+                                  dtype=numpy.float32)
         dummy_batch[0:last_batch.shape[0], :, :, :] = last_batch
         dummy_batch = dummy_batch.transpose(1, 2, 3, 0)
         dummy_batch = self.preprocessor.run(dummy_batch)
@@ -842,8 +839,8 @@ class Evaluator(object):
         print predictions.shape
 
         # Compute accuracy
-        accuracy = (100.0*numpy.sum(
-            predictions == self.data_container.y))/len(self.data_container.y)
+        accuracy = (100.0 * numpy.sum(predictions == self.data_container.y)
+                    ) / len(self.data_container.y)
 
         return accuracy
 
@@ -880,3 +877,134 @@ class Preprocessor(object):
         for module in self.module_list:
             batch = module.run(batch)
         return batch
+
+
+class Crop(object):
+    def __init__(self, input_size, output_size):
+        self.input_size = input_size
+        self.output_size = output_size
+
+        # Get input keypoints (only need center)
+        input_width, input_height = self.input_size
+        self.input_center = numpy.array([input_width / 2, input_height / 2, 1])
+
+        # Get output keypoints
+        output_width, output_height = self.output_size
+        self.corner_1 = numpy.array([0, 0, 1])
+        self.corner_2 = numpy.array([0, output_height, 1])
+        self.corner_3 = numpy.array([output_width, 0, 1])
+        self.corner_4 = numpy.array([output_width, output_height, 1])
+        self.center = numpy.array([output_width / 2, output_height / 2, 1])
+
+        self.transform = skimage.transform.AffineTransform(scale=(1.0, 1.0))
+
+    def get(self, image):
+        """Takes an image as an ndarray, and returns a cropped image as an
+        ndarray of dtype float32"""
+
+        num_channels = image.shape[0]
+
+        current_corner_1 = numpy.dot(self.transform.params, self.corner_1)
+        current_corner_2 = numpy.dot(self.transform.params, self.corner_2)
+        current_corner_3 = numpy.dot(self.transform.params, self.corner_3)
+        current_corner_4 = numpy.dot(self.transform.params, self.corner_4)
+        current_center = numpy.dot(self.transform.params, self.center)
+
+        matrix = self.transform.params
+
+        output = numpy.empty(
+            (num_channels, self.output_size[0], self.output_size[1]),
+            dtype=numpy.float32)
+
+        for channel in range(num_channels):
+            output[channel, :, :] = skimage.transform._warps_cy._warp_fast(
+                image=image[channel, :, :],
+                H=matrix,
+                output_shape=self.output_size)
+        return numpy.float32(output)
+
+    def scale(self, scale):
+        self.transform += skimage.transform.AffineTransform(
+            scale=(scale, scale))
+
+    def rotate(self, angle):
+        self.transform += skimage.transform.AffineTransform(
+            rotation=numpy.deg2rad(angle))
+
+    def translate(self, x, y):
+        self.transform += skimage.transform.AffineTransform(translation=(x, y))
+
+    def centered(self):
+        current_center = numpy.dot(self.transform.params, self.center)
+        shift = self.input_center - current_center
+        self.transform += skimage.transform.AffineTransform(
+            translation=shift[0:2])
+
+    def show(self, image):
+        current_corner_1 = numpy.dot(self.transform.params, self.corner_1)
+        current_corner_2 = numpy.dot(self.transform.params, self.corner_2)
+        current_corner_3 = numpy.dot(self.transform.params, self.corner_3)
+        current_corner_4 = numpy.dot(self.transform.params, self.corner_4)
+        current_center = numpy.dot(self.transform.params, self.center)
+
+        pyplot.imshow(image)
+        pyplot.plot(current_corner_1[0], current_corner_1[1], 'r.')
+        pyplot.plot(current_corner_2[0], current_corner_2[1], 'r.')
+        pyplot.plot(current_corner_3[0], current_corner_3[1], 'r.')
+        pyplot.plot(current_corner_4[0], current_corner_4[1], 'r.')
+        pyplot.plot(current_center[0], current_center[1], 'b.')
+        pyplot.show()
+
+
+class DataAugmenter2(object):
+    def __init__(self, crop_shape, flip=True, color_on=False, gray_on=False):
+        """"""
+        self.crop_shape = crop_shape
+        self.flip = flip
+        self.color_on = color_on
+        self.gray_on = gray_on
+        if len(crop_shape) != 2:
+            raise ValueError("window_shape should be length 2")
+
+    def run(self, batch):
+        """Applies random crops to each image in a batch.
+
+        Args:
+          batch: 4D ndarray with shape (channels, width, height, batch_size)
+
+        Returns:
+          batch_out: 4D ndarray with shape (channels, crop_shape[0],
+          crop_shape[1], batch_size)
+        """
+        channels, width, height, batch_size = batch.shape
+
+        out_shape = (channels, self.crop_shape[0], self.crop_shape[1],
+                     batch_size)
+        batch_out = numpy.empty(out_shape, dtype=numpy.float32)
+
+        image = batch[:, :, :, 0]
+
+        for sample in range(batch_size):
+
+            angle = (numpy.random.rand() - 0.5) * 10
+            scale = numpy.random.rand() * 0.7 + 0.7
+            diff = (300 - scale * 200)
+            translation_x = numpy.random.rand() * diff - diff / 2
+            translation_y = numpy.random.rand() * diff - diff / 2
+
+            crop = Crop()
+            crop.rotate(angle)
+            crop.scale(scale)
+            crop.centered()
+            crop.translate(translation_x, translation_y)
+            output = crop.get(image)
+
+            # batch_out[:, :, :, sample] = output
+
+        if self.color_on:
+            x_batch_out = self._color_augment(batch_out)
+        elif self.gray_on:
+            x_batch_out = self._gray_augment(batch_out)
+        else:
+            x_batch_out = batch_out
+        return x_batch_out

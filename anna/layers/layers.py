@@ -41,7 +41,7 @@ def rectify(x):
 
 
 def trec(x):
-    return x*(x > 1)
+    return x * (x > 1)
 
 
 def softmax(x):
@@ -81,8 +81,8 @@ def all_trainable_parameters(layer):
     if isinstance(layer, InputLayer) or isinstance(layer, Input2DLayer):
         return []
     elif isinstance(layer, ConcatenateLayer):
-        return sum([all_trainable_parameters(i) for i in layer.input_layers],
-                   [])
+        return sum([all_trainable_parameters(i)
+                    for i in layer.input_layers], [])
     else:
         if layer.trainable:
             return layer.params + all_trainable_parameters(layer.input_layer)
@@ -148,9 +148,9 @@ def gen_updates_regular_momentum(loss, all_parameters, learning_rate, momentum,
     all_grads = [theano.grad(loss, param) for param in all_parameters]
     updates = []
     for param_i, grad_i in zip(all_parameters, all_grads):
-        mparam_i = theano.shared(param_i.get_value()*0.)
-        v = (momentum * mparam_i - weight_decay * learning_rate * param_i
-             - learning_rate * grad_i)
+        mparam_i = theano.shared(param_i.get_value() * 0.)
+        v = (momentum * mparam_i - weight_decay * learning_rate * param_i -
+             learning_rate * grad_i)
         updates.append((mparam_i, v))
         updates.append((param_i, param_i + v))
     return updates
@@ -164,7 +164,7 @@ def gen_updates_nesterov_momentum(loss, all_parameters, learning_rate,
     all_grads = [theano.grad(loss, param) for param in all_parameters]
     updates = []
     for param_i, grad_i in zip(all_parameters, all_grads):
-        mparam_i = theano.shared(param_i.get_value()*0.)
+        mparam_i = theano.shared(param_i.get_value() * 0.)
         full_grad = grad_i + weight_decay * param_i
         # new momemtum
         v = momentum * mparam_i - learning_rate * full_grad
@@ -191,21 +191,24 @@ def gen_updates_adagrad(loss, all_parameters, learning_rate=1.0, epsilon=1e-6):
     """
     all_grads = [theano.grad(loss, param) for param in all_parameters]
     # initialise to zeroes with the right shape
-    all_accumulators = [theano.shared(param.get_value()*0.)
+    all_accumulators = [theano.shared(param.get_value() * 0.)
                         for param in all_parameters]
 
     updates = []
     for param_i, grad_i, acc_i in zip(all_parameters, all_grads,
                                       all_accumulators):
-        acc_i_new = acc_i + grad_i**2
+        acc_i_new = acc_i + grad_i ** 2
         updates.append((acc_i, acc_i_new))
-        updates.append((param_i, param_i - learning_rate * grad_i
-                        / T.sqrt(acc_i_new + epsilon)))
+        updates.append(
+            (param_i,
+             param_i - learning_rate * grad_i / T.sqrt(acc_i_new + epsilon)))
 
     return updates
 
 
-def gen_updates_rmsprop(loss, all_parameters, learning_rate=1.0, rho=0.9,
+def gen_updates_rmsprop(loss, all_parameters,
+                        learning_rate=1.0,
+                        rho=0.9,
                         epsilon=1e-6):
     """
     epsilon is not included in Hinton's video, but to prevent problems with
@@ -218,21 +221,24 @@ def gen_updates_rmsprop(loss, all_parameters, learning_rate=1.0, rho=0.9,
     """
     all_grads = [theano.grad(loss, param) for param in all_parameters]
     # initialise to zeroes with the right shape
-    all_accumulators = [theano.shared(param.get_value()*0.)
+    all_accumulators = [theano.shared(param.get_value() * 0.)
                         for param in all_parameters]
 
     updates = []
     for param_i, grad_i, acc_i in zip(all_parameters, all_grads,
                                       all_accumulators):
-        acc_i_new = rho * acc_i + (1 - rho) * grad_i**2
+        acc_i_new = rho * acc_i + (1 - rho) * grad_i ** 2
         updates.append((acc_i, acc_i_new))
-        updates.append((param_i, param_i - learning_rate * grad_i
-                        / T.sqrt(acc_i_new + epsilon)))
+        updates.append(
+            (param_i,
+             param_i - learning_rate * grad_i / T.sqrt(acc_i_new + epsilon)))
 
     return updates
 
 
-def gen_updates_adadelta(loss, all_parameters, learning_rate=1.0, rho=0.95,
+def gen_updates_adadelta(loss, all_parameters,
+                         learning_rate=1.0,
+                         rho=0.95,
                          epsilon=1e-6):
     """
     in the paper, no learning rate is considered (so learning_rate=1.0).
@@ -247,27 +253,26 @@ def gen_updates_adadelta(loss, all_parameters, learning_rate=1.0, rho=0.95,
     """
     all_grads = [theano.grad(loss, param) for param in all_parameters]
     # initialise to zeroes with the right shape
-    all_accumulators = [theano.shared(param.get_value()*0.)
+    all_accumulators = [theano.shared(param.get_value() * 0.)
                         for param in all_parameters]
-    all_delta_accumulators = [theano.shared(param.get_value()*0.)
+    all_delta_accumulators = [theano.shared(param.get_value() * 0.)
                               for param in all_parameters]
 
     # all_accumulators: accumulate gradient magnitudes
     # all_delta_accumulators: accumulate update magnitudes (recursive!)
 
     updates = []
-    for param_i, grad_i, acc_i, acc_delta_i in zip(all_parameters,
-                                                   all_grads,
+    for param_i, grad_i, acc_i, acc_delta_i in zip(all_parameters, all_grads,
                                                    all_accumulators,
                                                    all_delta_accumulators):
-        acc_i_new = rho * acc_i + (1 - rho) * grad_i**2
+        acc_i_new = rho * acc_i + (1 - rho) * grad_i ** 2
         updates.append((acc_i, acc_i_new))
 
-        update_i = (grad_i * T.sqrt(acc_delta_i + epsilon)
-                    / T.sqrt(acc_i_new + epsilon))
+        update_i = (grad_i * T.sqrt(acc_delta_i + epsilon) /
+                    T.sqrt(acc_i_new + epsilon))
         updates.append((param_i, param_i - learning_rate * update_i))
 
-        acc_delta_i_new = rho * acc_delta_i + (1 - rho) * update_i**2
+        acc_delta_i_new = rho * acc_delta_i + (1 - rho) * update_i ** 2
         updates.append((acc_delta_i, acc_delta_i_new))
 
     return updates
@@ -301,20 +306,20 @@ def sparse_initialisation(n_inputs, n_outputs, sparsity=0.05, std=0.01):
 
 class Layer(object):
     def __init__(self):
-        raise NotImplementedError(str(type(self)) +
-                                  " does not implement this method")
+        raise NotImplementedError(
+            str(type(self)) + " does not implement this method")
 
     def get_output_shape(self):
-        raise NotImplementedError(str(type(self)) +
-                                  " does not implement this method")
+        raise NotImplementedError(
+            str(type(self)) + " does not implement this method")
 
     def output(self):
-        raise NotImplementedError(str(type(self)) +
-                                  " does not implement this method")
+        raise NotImplementedError(
+            str(type(self)) + " does not implement this method")
 
     def reset_params(self):
-        raise NotImplementedError(str(type(self)) +
-                                  " does not implement this method")
+        raise NotImplementedError(
+            str(type(self)) + " does not implement this method")
 
 
 class InputLayer(Layer):
@@ -380,11 +385,11 @@ class PoolingLayer(Layer):
     def get_output_shape(self):
         output_shape = list(self.input_layer.get_output_shape())
         if self.ignore_border:
-            output_shape[-1] = int(numpy.floor(float(output_shape[-1])
-                                   / self.ds_factor))
+            output_shape[-1] = int(numpy.floor(float(output_shape[-1]) /
+                                               self.ds_factor))
         else:
-            output_shape[-1] = int(numpy.ceil(float(output_shape[-1])
-                                   / self.ds_factor))
+            output_shape[-1] = int(numpy.ceil(float(output_shape[-1]) /
+                                              self.ds_factor))
         return tuple(output_shape)
 
     def output(self, *args, **kwargs):
@@ -415,15 +420,15 @@ class Pooling2DLayer(Layer):
     def get_output_shape(self):
         output_shape = list(self.input_layer.get_output_shape())
         if self.ignore_border:
-            output_shape[-2] = int(numpy.floor(float(output_shape[-2])
-                                   / self.pool_size[0]))
-            output_shape[-1] = int(numpy.floor(float(output_shape[-1])
-                                   / self.pool_size[1]))
+            output_shape[-2] = int(numpy.floor(float(output_shape[-2]) /
+                                               self.pool_size[0]))
+            output_shape[-1] = int(numpy.floor(float(output_shape[-1]) /
+                                               self.pool_size[1]))
         else:
-            output_shape[-2] = int(numpy.ceil(float(output_shape[-2])
-                                   / self.pool_size[0]))
-            output_shape[-1] = int(numpy.ceil(float(output_shape[-1])
-                                   / self.pool_size[1]))
+            output_shape[-2] = int(numpy.ceil(float(output_shape[-2]) /
+                                              self.pool_size[0]))
+            output_shape[-1] = int(numpy.ceil(float(output_shape[-1]) /
+                                              self.pool_size[1]))
         return tuple(output_shape)
 
     def output(self, *args, **kwargs):
@@ -435,7 +440,9 @@ class GlobalPooling2DLayer(Layer):
     """
     Global pooling across the entire feature map, useful in NINs.
     """
-    def __init__(self, input_layer, pooling_function='mean',
+
+    def __init__(self, input_layer,
+                 pooling_function='mean',
                  nonlinearity=softmax):
         self.input_layer = input_layer
         self.pooling_function = pooling_function
@@ -472,7 +479,8 @@ class GlobalPooling2DLayer(Layer):
 
 class DenseLayer(Layer):
     def __init__(self, input_layer, n_outputs, weights_std, init_bias_value,
-                 nonlinearity=rectify, dropout=0.):
+                 nonlinearity=rectify,
+                 dropout=0.):
         self.n_outputs = n_outputs
         self.input_layer = input_layer
         self.weights_std = numpy.float32(weights_std)
@@ -496,8 +504,8 @@ class DenseLayer(Layer):
         self.W.set_value(
             numpy.random.randn(self.n_inputs, self.n_outputs).astype(
                 numpy.float32) * self.weights_std)
-        self.b.set_value(numpy.ones(self.n_outputs).astype(numpy.float32)
-                         * self.init_bias_value)
+        self.b.set_value(numpy.ones(self.n_outputs).astype(numpy.float32) *
+                         self.init_bias_value)
 
     def get_output_shape(self):
         return (self.mb_size, self.n_outputs)
@@ -513,20 +521,22 @@ class DenseLayer(Layer):
 
         if dropout_active and (self.dropout > 0.):
             retain_prob = 1 - self.dropout
-            input = (input / retain_prob
-                     * srng.binomial(input.shape, p=retain_prob,
-                                     dtype='int32').astype('float32'))
+            input = (input / retain_prob *
+                     srng.binomial(input.shape,
+                                   p=retain_prob,
+                                   dtype='int32').astype('float32'))
             # apply the input mask and rescale the input accordingly.
             # By doing this it's no longer necessary to rescale the weights
             # at test time.
 
-        return self.nonlinearity(T.dot(input, self.W)
-                                 + self.b.dimshuffle('x', 0))
+        return self.nonlinearity(
+            T.dot(input, self.W) + self.b.dimshuffle('x', 0))
 
 
 class DenseNoBiasLayer(Layer):
     def __init__(self, input_layer, n_outputs, weights_std,
-                 nonlinearity=rectify, dropout=0.):
+                 nonlinearity=rectify,
+                 dropout=0.):
         self.n_outputs = n_outputs
         self.input_layer = input_layer
         self.weights_std = numpy.float32(weights_std)
@@ -562,9 +572,10 @@ class DenseNoBiasLayer(Layer):
 
         if dropout_active and (self.dropout > 0.):
             retain_prob = 1 - self.dropout
-            input = (input / retain_prob
-                     * srng.binomial(input.shape, p=retain_prob,
-                                     dtype='int32').astype('float32'))
+            input = (input / retain_prob *
+                     srng.binomial(input.shape,
+                                   p=retain_prob,
+                                   dtype='int32').astype('float32'))
             # apply the input mask and rescale the input accordingly.
             # By doing this it's no longer necessary to rescale the weights
             # at test time.
@@ -572,14 +583,47 @@ class DenseNoBiasLayer(Layer):
         return self.nonlinearity(T.dot(input, self.W))
 
 
+class DenseBatchNormLayer(Layer):
+    def __init__(self, input):
+
+        self.input = input
+        self.epsilon = 1e-5
+        self.gamma = shared_single(1)
+        self.beta = shared_single(1)
+
+        self.trainable = True
+        self.params = [self.gamma, self.beta]
+        self.reset_params()
+
+    def get_output_shape(self):
+        return self.input.get_output_shape()
+
+    def output(self, input=None, *args, **kwargs):
+
+        mean = T.mean(self.input.output(), axis=0)[None, :]
+        std = T.std(self.input.output(), axis=0)[None, :]
+
+        x = (self.input.output() - mean)/(std + self.epsilon)
+
+        gamma = self.gamma[None, :]
+        beta = self.beta[None, :]
+        y = gamma * x + beta
+
+        output = y
+        return output
+
+    def reset_params(self):
+        _, num_features = self.get_output_shape()
+        gamma_values = numpy.ones((num_features, )).astype(numpy.float32)
+        self.gamma.set_value(gamma_values)
+
+        beta_values = numpy.zeros((num_features, )).astype(numpy.float32)
+        self.beta.set_value(beta_values)
+
+
 class Conv2DLayer(Layer):
-    def __init__(self,
-                 input_layer,
-                 n_filters,
-                 filter_width,
-                 filter_height,
-                 weights_std,
-                 init_bias_value,
+    def __init__(self, input_layer, n_filters, filter_width, filter_height,
+                 weights_std, init_bias_value,
                  nonlinearity=rectify,
                  dropout=0.,
                  dropout_tied=False,
@@ -623,10 +667,10 @@ class Conv2DLayer(Layer):
 
     def reset_params(self):
         self.W.set_value(
-            numpy.random.randn(*self.filter_shape).astype(numpy.float32)
-            * self.weights_std)
-        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32)
-                         * self.init_bias_value)
+            numpy.random.randn(*self.filter_shape).astype(numpy.float32) *
+            self.weights_std)
+        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32) *
+                         self.init_bias_value)
 
     def get_output_shape(self):
         if self.border_mode == 'valid':
@@ -660,7 +704,8 @@ class Conv2DLayer(Layer):
                     p=retain_prob,
                     dtype='int32').astype('float32').dimshuffle(0, 1, 'x', 'x')
             else:
-                mask = srng.binomial(input.shape, p=retain_prob,
+                mask = srng.binomial(input.shape,
+                                     p=retain_prob,
                                      dtype='int32').astype('float32')
                 # apply the input mask and rescale the input accordingly.
                 # By doing this it's no longer necessary to rescale the weights
@@ -668,38 +713,29 @@ class Conv2DLayer(Layer):
             input = input / retain_prob * mask
 
         if self.border_mode in ['valid', 'full']:
-            conved = conv2d(input,
-                            self.W,
+            conved = conv2d(input, self.W,
                             subsample=(1, 1),
                             image_shape=self.input_shape,
                             filter_shape=self.filter_shape,
                             border_mode=self.border_mode)
         elif self.border_mode == 'same':
-            conved = conv2d(input,
-                            self.W,
+            conved = conv2d(input, self.W,
                             subsample=(1, 1),
                             image_shape=self.input_shape,
                             filter_shape=self.filter_shape,
                             border_mode='full')
             shift_x = (self.filter_width - 1) // 2
             shift_y = (self.filter_height - 1) // 2
-            conved = conved[:, :, shift_x:self.input_shape[2]
-                            + shift_x, shift_y:self.input_shape[3] + shift_y]
+            conved = conved[:, :, shift_x:self.input_shape[2] + shift_x,
+                            shift_y:self.input_shape[3] + shift_y]
         else:
             raise RuntimeError("Invalid border mode: '%s'" % self.border_mode)
         return self.nonlinearity(conved + self.b.dimshuffle('x', 0, 'x', 'x'))
 
 
 class StridedConv2DLayer(Layer):
-    def __init__(self,
-                 input_layer,
-                 n_filters,
-                 filter_width,
-                 filter_height,
-                 stride_x,
-                 stride_y,
-                 weights_std,
-                 init_bias_value,
+    def __init__(self, input_layer, n_filters, filter_width, filter_height,
+                 stride_x, stride_y, weights_std, init_bias_value,
                  nonlinearity=rectify,
                  dropout=0.,
                  dropout_tied=False,
@@ -761,14 +797,15 @@ class StridedConv2DLayer(Layer):
     def reset_params(self):
         self.W.set_value(numpy.random.randn(*self.filter_shape).astype(
             numpy.float32) * self.weights_std)
-        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32)
-                         * self.init_bias_value)
+        self.b.set_value(numpy.ones(self.n_filters).astype(numpy.float32) *
+                         self.init_bias_value)
 
     def get_output_shape(self):
-        output_width = (self.input_shape[2] - self.filter_width
-                        + self.stride_x) // self.stride_x  # integer division
-        output_height = (self.input_shape[3] - self.filter_height
-                         + self.stride_y) // self.stride_y  # integer division
+        output_width = (self.input_shape[2] - self.filter_width + self.stride_x
+                        ) // self.stride_x  # integer division
+        output_height = (
+            self.input_shape[3] - self.filter_height + self.stride_y
+        ) // self.stride_y  # integer division
         output_shape = (self.input_shape[0], self.n_filters, output_width,
                         output_height)
         return output_shape
@@ -788,7 +825,8 @@ class StridedConv2DLayer(Layer):
                     p=retain_prob,
                     dtype='int32').astype('float32').dimshuffle(0, 1, 'x', 'x')
             else:
-                mask = srng.binomial(input.shape, p=retain_prob,
+                mask = srng.binomial(input.shape,
+                                     p=retain_prob,
                                      dtype='int32').astype('float32')
                 # apply the input mask and rescale the input accordingly.
                 # By doing this it's no longer necessary to rescale the weights
@@ -804,12 +842,12 @@ class StridedConv2DLayer(Layer):
             num_steps_x = self.filter_width // self.stride_x
             num_steps_y = self.filter_height // self.stride_y
 
-            padded_width = ((self.input_shape[2] // self.filter_width)
-                            * self.filter_width + (num_steps_x - 1)
-                            * self.stride_x)
-            padded_height = ((self.input_shape[3]
-                             // self.filter_height) * self.filter_height
-                             + (num_steps_y - 1) * self.stride_y)
+            padded_width = (
+                (self.input_shape[2] // self.filter_width) * self.filter_width
+                + (num_steps_x - 1) * self.stride_x)
+            padded_height = (
+                (self.input_shape[3] // self.filter_height) *
+                self.filter_height + (num_steps_y - 1) * self.stride_y)
 
             truncated_width = min(self.input_shape[2], padded_width)
             truncated_height = min(self.input_shape[3], padded_height)
@@ -818,8 +856,9 @@ class StridedConv2DLayer(Layer):
             input_padded_shape = (self.input_shape[0], self.input_shape[1],
                                   padded_width, padded_height)
             input_padded = T.zeros(input_padded_shape)
-            input_padded = T.set_subtensor(input_padded[
-                :, :, :truncated_width, :truncated_height], input_truncated)
+            input_padded = T.set_subtensor(
+                input_padded[:, :, :truncated_width, :truncated_height],
+                input_truncated)
 
             inputs_x = []
             for num_x in xrange(num_steps_x):
@@ -830,21 +869,20 @@ class StridedConv2DLayer(Layer):
                     # pixel shift in the y direction
                     shift_y = num_y * self.stride_y
 
-                    width = ((input_padded_shape[2] - shift_x)
-                             // self.filter_width)
-                    height = ((input_padded_shape[3] - shift_y)
-                              // self.filter_height)
+                    width = ((input_padded_shape[2] - shift_x) //
+                             self.filter_width)
+                    height = ((input_padded_shape[3] - shift_y) //
+                              self.filter_height)
 
                     r_input_shape = (input_padded_shape[0],
-                                     input_padded_shape[1],
-                                     width,
-                                     self.filter_width,
-                                     height,
+                                     input_padded_shape[1], width,
+                                     self.filter_width, height,
                                      self.filter_height)
 
-                    r_input = input_padded[
-                        :, :, shift_x:width * self.filter_width + shift_x,
-                        shift_y:height * self.filter_height + shift_y]
+                    r_input = input_padded[:, :, shift_x:width *
+                                           self.filter_width
+                                           + shift_x, shift_y:height *
+                                           self.filter_height + shift_y]
                     r_input = r_input.reshape(r_input_shape)
 
                     inputs_y.append(r_input)
@@ -852,13 +890,11 @@ class StridedConv2DLayer(Layer):
                 inputs_x.append(T.stack(*inputs_y))
 
             inputs_stacked = T.stack(*inputs_x)
-            r_conved = T.tensordot(inputs_stacked,
-                                   W_flipped,
+            r_conved = T.tensordot(inputs_stacked, W_flipped,
                                    numpy.asarray([[3, 5, 7], [1, 2, 3]]))
 
             r_conved = r_conved.dimshuffle(2, 5, 3, 0, 4, 1)
-            conved = r_conved.reshape((r_conved.shape[0],
-                                       r_conved.shape[1],
+            conved = r_conved.reshape((r_conved.shape[0], r_conved.shape[1],
                                        r_conved.shape[2] * r_conved.shape[3],
                                        r_conved.shape[4] * r_conved.shape[5]))
 
@@ -879,39 +915,32 @@ class StridedConv2DLayer(Layer):
                     # pixel shift in the y direction
                     shift_y = num_y * self.stride_y
 
-                    width = ((self.input_shape[2] - shift_x)
-                             // self.filter_width)
-                    height = ((self.input_shape[3] - shift_y)
-                              // self.filter_height)
+                    width = ((self.input_shape[2] - shift_x) //
+                             self.filter_width)
+                    height = ((self.input_shape[3] - shift_y) //
+                              self.filter_height)
 
                     # we can safely skip this product, it doesn't contribute to
                     # the final convolution.
                     if (width == 0) or (height == 0):
                         continue
 
-                    r_input_shape = (self.input_shape[0],
-                                     self.input_shape[1],
-                                     width,
-                                     self.filter_width,
-                                     height,
+                    r_input_shape = (self.input_shape[0], self.input_shape[1],
+                                     width, self.filter_width, height,
                                      self.filter_height)
 
-                    r_input = input[
-                        :,
-                        :,
-                        shift_x:width * self.filter_width + shift_x,
-                        shift_y:height * self.filter_height + shift_y]
+                    r_input = input[:, :, shift_x:width * self.filter_width +
+                                    shift_x, shift_y:height *
+                                    self.filter_height + shift_y]
                     r_input = r_input.reshape(r_input_shape)
 
                     r_conved = T.tensordot(r_input, W_flipped,
-                                           numpy.asarray([[1, 3, 5],
-                                                         [1, 2, 3]]))
+                                           numpy.asarray([[1, 3, 5], [1, 2,
+                                                                      3]]))
                     r_conved = r_conved.dimshuffle(0, 3, 1, 2)
-                    conved = T.set_subtensor(conved[
-                        :,
-                        :,
-                        num_x::num_steps_x,
-                        num_y::num_steps_y], r_conved)
+                    conved = T.set_subtensor(
+                        conved[:, :, num_x::num_steps_x, num_y::num_steps_y],
+                        r_conved)
 
         elif self.implementation == 'unstrided':
             num_steps_x = self.filter_width // self.stride_x
@@ -919,67 +948,95 @@ class StridedConv2DLayer(Layer):
 
             # input sizes need to be multiples of the strides, truncate to
             # correct sizes.
-            truncated_width = ((self.input_shape[2] // self.stride_x)
-                               * self.stride_x)
-            truncated_height = ((self.input_shape[3] // self.stride_y)
-                                * self.stride_y)
+            truncated_width = ((self.input_shape[2] // self.stride_x) *
+                               self.stride_x)
+            truncated_height = ((self.input_shape[3] // self.stride_y) *
+                                self.stride_y)
             input_truncated = input[:, :, :truncated_width, :truncated_height]
 
-            r_input_shape = (self.input_shape[0],
-                             self.input_shape[1],
-                             truncated_width // self.stride_x,
-                             self.stride_x,
-                             truncated_height // self.stride_y,
-                             self.stride_y)
+            r_input_shape = (self.input_shape[0], self.input_shape[1],
+                             truncated_width // self.stride_x, self.stride_x,
+                             truncated_height // self.stride_y, self.stride_y)
 
             r_input = input_truncated.reshape(r_input_shape)
 
             # fold strides into the feature maps dimension
-            r_input_folded_shape = (self.input_shape[0],
-                                    self.input_shape[1] * self.stride_x
-                                    * self.stride_y,
+            r_input_folded_shape = (self.input_shape[0], self.input_shape[1] *
+                                    self.stride_x * self.stride_y,
                                     truncated_width // self.stride_x,
                                     truncated_height // self.stride_y)
-            r_input_folded = r_input.transpose(
-                0, 1, 3, 5, 2, 4).reshape(r_input_folded_shape)
+            r_input_folded = r_input.transpose(0, 1, 3, 5, 2,
+                                               4).reshape(r_input_folded_shape)
 
-            r_filter_shape = (self.filter_shape[0],
-                              self.filter_shape[1],
-                              num_steps_x,
-                              self.stride_x,
-                              num_steps_y,
+            r_filter_shape = (self.filter_shape[0], self.filter_shape[1],
+                              num_steps_x, self.stride_x, num_steps_y,
                               self.stride_y)
             # need to operate on the flipped W here, else things get hairy.
             r_W_flipped = W_flipped.reshape(r_filter_shape)
 
             # fold strides into the feature maps dimension
-            r_filter_folded_shape = (self.filter_shape[0],
-                                     self.filter_shape[1] * self.stride_x
-                                     * self.stride_y,
-                                     num_steps_x,
-                                     num_steps_y)
+            r_filter_folded_shape = (self.filter_shape[0], self.filter_shape[1]
+                                     * self.stride_x * self.stride_y,
+                                     num_steps_x, num_steps_y)
             r_W_flipped_folded = r_W_flipped.transpose(
                 0, 1, 3, 5, 2, 4).reshape(r_filter_folded_shape)
             r_W_folded = r_W_flipped_folded[:, :, ::-1, ::-1]  # unflip
 
-            conved = conv2d(r_input_folded,
-                            r_W_folded,
+            conved = conv2d(r_input_folded, r_W_folded,
                             subsample=(1, 1),
                             image_shape=r_input_folded_shape,
                             filter_shape=r_filter_folded_shape)
             # 'conved' should already have the right shape
 
         elif self.implementation == 'convolution':
-            conved = conv2d(input,
-                            self.W,
+            conved = conv2d(input, self.W,
                             subsample=(self.stride_x, self.stride_y),
                             image_shape=self.input_shape,
                             filter_shape=self.filter_shape)
         else:
-            raise RuntimeError("Invalid implementation string: '%s'"
-                               % self.implementation)
+            raise RuntimeError("Invalid implementation string: '%s'" %
+                               self.implementation)
 
         return self.nonlinearity(conved + self.b.dimshuffle('x', 0, 'x', 'x'))
+
+
+class ConvBatchNormLayer(Layer):
+    def __init__(self, input):
+
+        self.input = input
+        self.epsilon = 1e-5
+        self.gamma = shared_single(1)
+        self.beta = shared_single(1)
+
+        self.trainable = True
+        self.params = [self.gamma, self.beta]
+        self.reset_params()
+
+    def get_output_shape(self):
+        return self.input.get_output_shape()
+
+    def output(self, input=None, *args, **kwargs):
+        mean = T.mean(self.input.output(), axis=(0, 2, 3))
+        mean = mean[None, :, None, None]
+        std = T.std(self.input.output(), axis=(0, 2, 3))
+        std = std[None, :, None, None]
+
+        x = (self.input.output() - mean)/(std + self.epsilon)
+
+        gamma = self.gamma[None, :, None, None]
+        beta = self.beta[None, :, None, None]
+        y = gamma * x + beta
+
+        output = y
+        return output
+
+    def reset_params(self):
+        _, num_features, _, _ = self.get_output_shape()
+        gamma_values = numpy.ones((num_features, )).astype(numpy.float32)
+        self.gamma.set_value(gamma_values)
+
+        beta_values = numpy.zeros((num_features, )).astype(numpy.float32)
+        self.beta.set_value(beta_values)
 
 
 class ConcatenateLayer(Layer):

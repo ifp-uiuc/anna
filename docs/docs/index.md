@@ -6,7 +6,7 @@ There are many other neural network libraries, which excel in different areas. W
 
 Here's how you would create a simple neural network, and train it on random data:
 
-```
+``` python
 import numpy
 
 from anna.models import SupervisedModel

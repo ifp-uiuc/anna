@@ -43,7 +43,8 @@ Now if you open python from the terminal, you will see something like this:
 While there appear to be mulitple ways to install theano, we recommend cloning the git repository to get the most up-to-date version:
 
     $ git clone git://github.com/Theano/Theano.git
-    $ python setup.py develop
+    $ cd ./Theano
+    $ sudo python setup.py develop
     
 The second command allows you to bypass the step where you must add theano to the PYTHONPATH and makes updating easier.
 
@@ -65,7 +66,7 @@ To install, simply clone the git repository:
 
 Make sure to add pylearn2 to your PYTHONPATH environment variable in your ~/.bashrc file so that python can locate it:
     
-    export $PYTHONPATH=$PYTHONPATH:/path_to_anna/anna
+    export PYTHONPATH=$PYTHONPATH:/path/to/pylearn2/
 
 Then, type ` source ~/.bashrc ` in the terminal to apply the changes.
 

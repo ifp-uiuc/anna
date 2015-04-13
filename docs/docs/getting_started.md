@@ -28,13 +28,13 @@ from anna.models import SupervisedModel
 
 class MyModel(SupervisedModel):
     def __init__(self):
-        self.input = cc_layers.Input2D(minibatch_size=128,
+        self.input = cc_layers.Input2DLayer(minibatch_size=128,
                                        num_channels=3,
                                        width=32,
                                        height=32)
-        self.conv1 = cc_layers.Conv2D(self.input,
+        self.conv1 = cc_layers.Conv2DLayer(self.input,
                                       num_filters=96)
-        self.output = layers.Dense(self.conv1, nonlinearity=layers.softmax)
+        self.output = layers.DenseLayer(self.conv1, nonlinearity=layers.softmax)
 
 model = MyModel()
 ```
@@ -46,7 +46,9 @@ Notice about we imported two modules from layers:
 `layers` is a collection of layers built using Theano's own kernels, including the ones used for 2D image convolution.
 `cc_layers` is a collection of layers built using kernels originally from `cuda_convnet`, which were designed specifically for 2D image convolution. 
 
-Note: Theano has recently adopted cuDNN's convolutional kernels, and so you might want to ignore cc_layers in the near future.
+> :pushpin: **Note:** Theano has recently adopted cuDNN's convolutional kernels, and so you might want to ignore cc_layers in the near future.
+
+The model templates use the keywords `input` and `output` to identify the first, and last layer of the network, and use those to access all the theano symbolic expressions they need.
 
 After we create the model, we instantiate it. This takes a while, because this is when are actually having Theano compile efficient c code to perform the computations for our neural network.
 

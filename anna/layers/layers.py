@@ -586,27 +586,27 @@ class DenseNoBiasLayer(Layer):
 class DenseBatchNormLayer(Layer):
     def __init__(self, input):
 
-        self.input = input
+        self.input_layer = input
         self.epsilon = 1e-5
         self.gamma = shared_single(1)
         self.beta = shared_single(1)
 
-        self.trainable = True
+        self.mb_size = self.input_layer.mb_size
+
+        self.trainable = False
         self.params = [self.gamma, self.beta]
         self.reset_params()
 
     def get_output_shape(self):
-        return self.input.get_output_shape()
+        return self.input_layer.get_output_shape()
 
     def output(self, input=None, *args, **kwargs):
+        mean = T.mean(self.input_layer.output(), axis=0, keepdims=True)
+        std = T.std(self.input_layer.output(), axis=0, keepdims=True)
+        x = (self.input_layer.output() - mean)/(std + self.epsilon)
 
-        mean = T.mean(self.input.output(), axis=0)[None, :]
-        std = T.std(self.input.output(), axis=0)[None, :]
-
-        x = (self.input.output() - mean)/(std + self.epsilon)
-
-        gamma = self.gamma[None, :]
-        beta = self.beta[None, :]
+        gamma = self.gamma.dimshuffle('x', 0)
+        beta = self.beta.dimshuffle('x', 0)
         y = gamma * x + beta
 
         output = y
@@ -680,7 +680,11 @@ class ConvBatchNormLayer(Layer):
         self.gamma = shared_single(1)
         self.beta = shared_single(1)
 
-        self.trainable = True
+        self.n_channels = self.input_layer.n_features
+        self.n_features = self.n_channels
+        self.mb_size = self.input_layer.mb_size
+
+        self.trainable = False
         self.params = [self.gamma, self.beta]
         self.reset_params()
 
@@ -688,17 +692,13 @@ class ConvBatchNormLayer(Layer):
         return self.input_layer.get_output_shape()
 
     def output(self, input=None, dropout_active=True, *args, **kwargs):
-        mean = T.mean(self.input_layer.output(), axis=(0, 2, 3))
-        mean = mean[None, :, None, None]
-        std = T.std(self.input_layer.output(), axis=(0, 2, 3))
-        std = std[None, :, None, None]
-
+        mean = T.mean(self.input_layer.output(), axis=(0, 2, 3), keepdims=True)
+        std = T.std(self.input_layer.output(), axis=(0, 2, 3), keepdims=True)
         x = (self.input_layer.output() - mean)/(std + self.epsilon)
 
-        gamma = self.gamma[None, :, None, None]
-        beta = self.beta[None, :, None, None]
+        gamma = self.gamma.dimshuffle('x', 0, 'x', 'x')
+        beta = self.beta.dimshuffle('x', 0, 'x', 'x')
         y = gamma * x + beta
-
         output = y
         return output
 
@@ -727,3 +727,22 @@ class ConcatenateLayer(Layer):
     def output(self, *args, **kwargs):
         inputs = [i.output(*args, **kwargs) for i in self.input_layers]
         return self.nonlinearity(T.concatenate(inputs, axis=1))
+
+
+class NonlinearityLayer(Layer):
+    def __init__(self, input, nonlinearity=identity):
+        self.input_layer = input
+        self.nonlinearity = nonlinearity
+        self.n_channels = self.input_layer.n_features
+        self.n_features = self.n_channels
+        self.mb_size = self.input_layer.mb_size
+
+        self.trainable = False
+        self.params = []
+
+    def get_output_shape(self):
+        return self.input_layer.get_output_shape()
+
+    def output(self, *args, **kwargs):
+        input = self.input_layer.output()
+        return self.nonlinearity(input)

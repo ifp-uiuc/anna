@@ -650,6 +650,36 @@ class Normer2(object):
         return norm_batch
 
 
+class Normer3(object):
+    def __init__(self, filter_size=7, num_channels=3):
+        self.filter_size = filter_size
+        self.pad = self.filter_size / 2
+        self.num_channels = num_channels
+        n = self.filter_size*self.filter_size*self.num_channels
+        self.w = numpy.float32(numpy.ones(
+                               (1, self.num_channels, self.filter_size,
+                                self.filter_size))) / n
+
+        input = T.ftensor4(name='input')
+        filter = T.ftensor4(name='filter')
+        gpu_input = gpu_contiguous(input)
+        gpu_filter = gpu_contiguous(filter)
+        self.conv_func = theano.function([input, filter],
+                                         theano.sandbox.cuda.dnn.dnn_conv(
+                                         gpu_input,
+                                         gpu_filter,
+                                         border_mode=(self.pad, self.pad)))
+
+    def run(self, x_batch):
+        mean_batch = self.conv_func(x_batch, self.w)
+        mean_batch = numpy.tile(mean_batch, (1, self.num_channels, 1, 1))
+        diff_batch = x_batch - mean_batch
+        std_batch = self.conv_func((diff_batch)**2, self.w)
+        std_batch = numpy.tile(std_batch, (1, self.num_channels, 1, 1))
+        norm_batch = diff_batch / (numpy.array(std_batch) ** (1 / 2))
+        return norm_batch
+
+
 class PatchGrabber(object):
     def __init__(self, num_patches, patch_size, num_channels=3):
         self.num_patches = num_patches
@@ -810,7 +840,6 @@ class Evaluator(object):
         # Compute accuracy on each training batch
         predictions = []
         for x_batch, y_batch in iterator:
-            x_batch = x_batch.transpose(1, 2, 3, 0)
             x_batch = self.preprocessor.run(x_batch)
             batch_pred = self.model.prediction(x_batch)
             batch_pred = numpy.argmax(batch_pred, axis=1)
@@ -827,7 +856,6 @@ class Evaluator(object):
                                    width),
                                   dtype=numpy.float32)
         dummy_batch[0:last_batch.shape[0], :, :, :] = last_batch
-        dummy_batch = dummy_batch.transpose(1, 2, 3, 0)
         dummy_batch = self.preprocessor.run(dummy_batch)
         batch_pred = self.model.prediction(dummy_batch)
         batch_pred = batch_pred[0:last_batch.shape[0], :]

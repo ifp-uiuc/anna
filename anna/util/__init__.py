@@ -8,6 +8,7 @@ from copy import deepcopy
 import cPickle
 
 import numpy
+import skimage.transform
 from skimage import color
 
 import theano
@@ -998,36 +999,32 @@ class DataAugmenter2(object):
         """Applies random crops to each image in a batch.
 
         Args:
-          batch: 4D ndarray with shape (channels, width, height, batch_size)
+          batch: 4D ndarray with shape (batch_size, channels, width, height)
 
         Returns:
-          batch_out: 4D ndarray with shape (channels, crop_shape[0],
-          crop_shape[1], batch_size)
+          batch_out: 4D ndarray with shape (batch_size, channels,
+          crop_shape[0], crop_shape[1])
         """
-        channels, width, height, batch_size = batch.shape
-
-        out_shape = (channels, self.crop_shape[0], self.crop_shape[1],
-                     batch_size)
+        batch_size, channels, width, height = batch.shape
+        out_shape = (batch_size, channels,
+                     self.crop_shape[0], self.crop_shape[1])
         batch_out = numpy.empty(out_shape, dtype=numpy.float32)
 
-        image = batch[:, :, :, 0]
-
         for sample in range(batch_size):
-
             angle = (numpy.random.rand() - 0.5) * 10
             scale = numpy.random.rand() * 0.7 + 0.7
-            diff = (300 - scale * 200)
+            diff = (width-scale*self.crop_shape[0])
             translation_x = numpy.random.rand() * diff - diff / 2
             translation_y = numpy.random.rand() * diff - diff / 2
 
-            crop = Crop()
+            crop = Crop((width, height), self.crop_shape)
             crop.rotate(angle)
             crop.scale(scale)
             crop.centered()
             crop.translate(translation_x, translation_y)
-            output = crop.get(image)
+            output = crop.get(batch[sample, :, :, :])
 
-            # batch_out[:, :, :, sample] = output
+            batch_out[sample, :, :, :] = output
 
         if self.color_on:
             x_batch_out = self._color_augment(batch_out)
@@ -1036,3 +1033,23 @@ class DataAugmenter2(object):
         else:
             x_batch_out = batch_out
         return x_batch_out
+
+    def _color_augment(self, x_batch):
+        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+        num_samples, __, __, __ = x_batch.shape
+
+        for i in range(num_samples):
+            out_batch[i, :, :, :] = color_augment_image(x_batch[i, :, :, :])
+
+        out_batch *= 2
+        return out_batch
+
+    def _gray_augment(self, x_batch):
+        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+        num_samples, __, __, __ = x_batch.shape
+
+        for i in range(num_samples):
+            out_batch[i, :, :, :] = gray_augment_image(x_batch[i, :, :, :])
+
+        out_batch *= 2
+        return out_batch

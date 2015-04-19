@@ -647,7 +647,7 @@ class Conv2DLayer(object):
             self.pad = (pad_size, pad_size)
         else:
             self.pad = pad
-            
+
         self.stride = stride
 
         self.mb_size = self.input_layer.mb_size

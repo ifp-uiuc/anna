@@ -627,6 +627,7 @@ class Conv2DLayer(object):
                  n_features,
                  filter_size,
                  weights_std,
+                 pad=None,
                  stride=(1, 1),
                  trainable=True):
 
@@ -641,6 +642,12 @@ class Conv2DLayer(object):
                              self.filter_size)
 
         self.weights_std = weights_std
+        if pad is None:
+            pad_size = self.filter_size/2
+            self.pad = (pad_size, pad_size)
+        else:
+            self.pad = pad
+
         self.stride = stride
 
         self.mb_size = self.input_layer.mb_size
@@ -655,18 +662,20 @@ class Conv2DLayer(object):
         input_shape = self.input_layer.get_output_shape()
         return GpuDnnConv.get_out_shape(input_shape,
                                         self.filter_shape,
-                                        'valid',
+                                        self.pad,
                                         self.stride)
 
     def output(self, input=None, dropout_active=True, *args, **kwargs):
         input = self.input_layer.output()
         contiguous_input = gpu_contiguous(input)
         contiguous_filters = gpu_contiguous(self.W)
+
         # output = theano.sandbox.cuda.dnn.dnn_conv(contiguous_input,
         #                                           contiguous_filters,
         #                                           subsample=self.stride)
         output = T.nnet.conv2d(contiguous_input, contiguous_filters,
-                                    subsample=self.stride)
+                               subsample=self.stride)
+
         return output
 
     def reset_params(self):

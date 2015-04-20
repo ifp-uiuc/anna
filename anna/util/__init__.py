@@ -8,6 +8,7 @@ from copy import deepcopy
 import cPickle
 
 import numpy
+import skimage.transform
 from skimage import color
 
 import theano
@@ -650,6 +651,36 @@ class Normer2(object):
         return norm_batch
 
 
+class Normer3(object):
+    def __init__(self, filter_size=7, num_channels=3):
+        self.filter_size = filter_size
+        self.pad = self.filter_size / 2
+        self.num_channels = num_channels
+        n = self.filter_size*self.filter_size*self.num_channels
+        self.w = numpy.float32(numpy.ones(
+                               (1, self.num_channels, self.filter_size,
+                                self.filter_size))) / n
+
+        input = T.ftensor4(name='input')
+        filter = T.ftensor4(name='filter')
+        gpu_input = gpu_contiguous(input)
+        gpu_filter = gpu_contiguous(filter)
+        self.conv_func = theano.function([input, filter],
+                                         theano.sandbox.cuda.dnn.dnn_conv(
+                                         gpu_input,
+                                         gpu_filter,
+                                         border_mode=(self.pad, self.pad)))
+
+    def run(self, x_batch):
+        mean_batch = self.conv_func(x_batch, self.w)
+        mean_batch = numpy.tile(mean_batch, (1, self.num_channels, 1, 1))
+        diff_batch = x_batch - mean_batch
+        std_batch = self.conv_func((diff_batch)**2, self.w)
+        std_batch = numpy.tile(std_batch, (1, self.num_channels, 1, 1))
+        norm_batch = diff_batch / (numpy.array(std_batch) ** (1 / 2))
+        return norm_batch
+
+
 class PatchGrabber(object):
     def __init__(self, num_patches, patch_size, num_channels=3):
         self.num_patches = num_patches
@@ -810,7 +841,6 @@ class Evaluator(object):
         # Compute accuracy on each training batch
         predictions = []
         for x_batch, y_batch in iterator:
-            x_batch = x_batch.transpose(1, 2, 3, 0)
             x_batch = self.preprocessor.run(x_batch)
             batch_pred = self.model.prediction(x_batch)
             batch_pred = numpy.argmax(batch_pred, axis=1)
@@ -827,7 +857,6 @@ class Evaluator(object):
                                    width),
                                   dtype=numpy.float32)
         dummy_batch[0:last_batch.shape[0], :, :, :] = last_batch
-        dummy_batch = dummy_batch.transpose(1, 2, 3, 0)
         dummy_batch = self.preprocessor.run(dummy_batch)
         batch_pred = self.model.prediction(dummy_batch)
         batch_pred = batch_pred[0:last_batch.shape[0], :]
@@ -970,36 +999,32 @@ class DataAugmenter2(object):
         """Applies random crops to each image in a batch.
 
         Args:
-          batch: 4D ndarray with shape (channels, width, height, batch_size)
+          batch: 4D ndarray with shape (batch_size, channels, width, height)
 
         Returns:
-          batch_out: 4D ndarray with shape (channels, crop_shape[0],
-          crop_shape[1], batch_size)
+          batch_out: 4D ndarray with shape (batch_size, channels,
+          crop_shape[0], crop_shape[1])
         """
-        channels, width, height, batch_size = batch.shape
-
-        out_shape = (channels, self.crop_shape[0], self.crop_shape[1],
-                     batch_size)
+        batch_size, channels, width, height = batch.shape
+        out_shape = (batch_size, channels,
+                     self.crop_shape[0], self.crop_shape[1])
         batch_out = numpy.empty(out_shape, dtype=numpy.float32)
 
-        image = batch[:, :, :, 0]
-
         for sample in range(batch_size):
-
             angle = (numpy.random.rand() - 0.5) * 10
             scale = numpy.random.rand() * 0.7 + 0.7
-            diff = (300 - scale * 200)
+            diff = (width-scale*self.crop_shape[0])
             translation_x = numpy.random.rand() * diff - diff / 2
             translation_y = numpy.random.rand() * diff - diff / 2
 
-            crop = Crop()
+            crop = Crop((width, height), self.crop_shape)
             crop.rotate(angle)
             crop.scale(scale)
             crop.centered()
             crop.translate(translation_x, translation_y)
-            output = crop.get(image)
+            output = crop.get(batch[sample, :, :, :])
 
-            # batch_out[:, :, :, sample] = output
+            batch_out[sample, :, :, :] = output
 
         if self.color_on:
             x_batch_out = self._color_augment(batch_out)
@@ -1008,3 +1033,23 @@ class DataAugmenter2(object):
         else:
             x_batch_out = batch_out
         return x_batch_out
+
+    def _color_augment(self, x_batch):
+        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+        num_samples, __, __, __ = x_batch.shape
+
+        for i in range(num_samples):
+            out_batch[i, :, :, :] = color_augment_image(x_batch[i, :, :, :])
+
+        out_batch *= 2
+        return out_batch
+
+    def _gray_augment(self, x_batch):
+        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+        num_samples, __, __, __ = x_batch.shape
+
+        for i in range(num_samples):
+            out_batch[i, :, :, :] = gray_augment_image(x_batch[i, :, :, :])
+
+        out_batch *= 2
+        return out_batch

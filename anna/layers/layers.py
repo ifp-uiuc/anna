@@ -670,11 +670,12 @@ class Conv2DLayer(object):
         contiguous_input = gpu_contiguous(input)
         contiguous_filters = gpu_contiguous(self.W)
 
-        # output = theano.sandbox.cuda.dnn.dnn_conv(contiguous_input,
-        #                                           contiguous_filters,
-        #                                           subsample=self.stride)
-        output = T.nnet.conv2d(contiguous_input, contiguous_filters,
-                               subsample=self.stride)
+        output = theano.sandbox.cuda.dnn.dnn_conv(contiguous_input,
+                                                  contiguous_filters,
+                                                  border_mode=self.pad,
+                                                  subsample=self.stride)
+        # output = T.nnet.conv2d(contiguous_input, contiguous_filters,
+        #                        subsample=self.stride)
 
         return output
 
@@ -757,3 +758,24 @@ class NonlinearityLayer(Layer):
     def output(self, *args, **kwargs):
         input = self.input_layer.output()
         return self.nonlinearity(input)
+
+
+class TimeMaxPoolLayer(Layer):
+    def __init__(self, input):
+        self.input_layer = input
+        self.n_channels = self.input_layer.n_channels
+        self.n_features = self.input_layer.n_features
+        self.mb_size = 1
+
+        self.trainable = False
+        self.params = []
+
+    def get_output_shape(self):
+        shape = self.input_layer.get_output_shape()
+        out_shape = (1, shape[1], shape[2], shape[3])
+        return out_shape
+
+    def output(self, *args, **kwargs):
+        input = self.input_layer.output()
+        output = T.max(input, axis=0, keepdims=True)
+        return output

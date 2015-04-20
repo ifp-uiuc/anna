@@ -662,9 +662,11 @@ class Conv2DLayer(object):
         input = self.input_layer.output()
         contiguous_input = gpu_contiguous(input)
         contiguous_filters = gpu_contiguous(self.W)
-        output = theano.sandbox.cuda.dnn.dnn_conv(contiguous_input,
-                                                  contiguous_filters,
-                                                  subsample=self.stride)
+        # output = theano.sandbox.cuda.dnn.dnn_conv(contiguous_input,
+        #                                           contiguous_filters,
+        #                                           subsample=self.stride)
+        output = T.nnet.conv2d(contiguous_input, contiguous_filters,
+                                    subsample=self.stride)
         return output
 
     def reset_params(self):

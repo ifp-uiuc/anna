@@ -836,36 +836,7 @@ class Evaluator(object):
         self._switch_off_dropout_flags()
 
     def run(self):
-        iterator = self._get_iterator()
-
-        # Compute accuracy on each training batch
-        predictions = []
-        for x_batch, y_batch in iterator:
-            x_batch = self.preprocessor.run(x_batch)
-            batch_pred = self.model.prediction(x_batch)
-            batch_pred = numpy.argmax(batch_pred, axis=1)
-            predictions.append(batch_pred)
-
-        # Classify last training batch
-        num_samples, num_channels, height, width = self.data_container.X.shape
-        last_batch_start_ind = numpy.floor(num_samples /
-                                           self.batch_size) * self.batch_size
-        last_batch_start_ind = int(last_batch_start_ind)
-        last_batch = self.data_container.X[last_batch_start_ind:, :, :, :]
-
-        dummy_batch = numpy.zeros((self.batch_size, num_channels, height,
-                                   width),
-                                  dtype=numpy.float32)
-        dummy_batch[0:last_batch.shape[0], :, :, :] = last_batch
-        dummy_batch = self.preprocessor.run(dummy_batch)
-        batch_pred = self.model.prediction(dummy_batch)
-        batch_pred = batch_pred[0:last_batch.shape[0], :]
-        batch_pred = numpy.argmax(batch_pred, axis=1)
-        predictions.append(batch_pred)
-
-        # Get all predictions
-        predictions = numpy.hstack(predictions)
-        print predictions.shape
+        predictions = self._get_predictions()
 
         # Compute accuracy
         accuracy = (100.0 * numpy.sum(predictions == self.data_container.y)
@@ -896,6 +867,40 @@ class Evaluator(object):
         iterator = dataset.iterator(mode='sequential',
                                     batch_size=self.batch_size)
         return iterator
+
+    def _get_predictions(self):
+        iterator = self._get_iterator()
+
+        # Compute accuracy on each training batch
+        predictions = []
+        for x_batch, y_batch in iterator:
+            x_batch = self.preprocessor.run(x_batch)
+            batch_pred = self.model.prediction(x_batch)
+            batch_pred = numpy.argmax(batch_pred, axis=1)
+            predictions.append(batch_pred)
+
+        # Classify last training batch
+        num_samples, num_channels, height, width = self.data_container.X.shape
+        last_batch_start_ind = numpy.floor(num_samples /
+                                           self.batch_size) * self.batch_size
+        last_batch_start_ind = int(last_batch_start_ind)
+        last_batch = self.data_container.X[last_batch_start_ind:, :, :, :]
+
+        dummy_batch = numpy.zeros((self.batch_size, num_channels, height,
+                                   width),
+                                  dtype=numpy.float32)
+        dummy_batch[0:last_batch.shape[0], :, :, :] = last_batch
+        dummy_batch = self.preprocessor.run(dummy_batch)
+        batch_pred = self.model.prediction(dummy_batch)
+        batch_pred = batch_pred[0:last_batch.shape[0], :]
+        batch_pred = numpy.argmax(batch_pred, axis=1)
+        predictions.append(batch_pred)
+
+        # Get all predictions
+        predictions = numpy.hstack(predictions)
+        # print predictions.shape
+
+        return predictions
 
 
 class Preprocessor(object):

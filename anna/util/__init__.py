@@ -15,10 +15,6 @@ import theano
 import theano.tensor as T
 from theano.sandbox.cuda.basic_ops import gpu_contiguous
 from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
-from pylearn2.space import Conv2DSpace, VectorSpace, CompositeSpace
-from pylearn2.datasets import cifar10
-from pylearn2.train_extensions.window_flip import _zero_pad
-from pylearn2.utils._window_flip import random_window_and_flip_c01b
 
 from anna.layers import layers
 from anna.datasets import supervised_dataset
@@ -459,164 +455,6 @@ class Monitor(object):
         self.step_number += 1
 
 
-class EvaluatorPylearn2(object):
-    def __init__(self, model, dataset, steps=100):
-        self.step_number = 1
-        self.steps = steps
-        self.model = model
-        self.dataset = dataset
-
-    def run(self):
-        input_convspace = Conv2DSpace(shape=(32, 32),
-                                      num_channels=3,
-                                      axes=('c', 0, 1, 'b'))
-        data_specs = (input_convspace, 'features')
-        iterator = self.dataset.iterator(mode='sequential',
-                                         batch_size=128,
-                                         data_specs=data_specs)
-        errors = []
-        if self.step_number % self.steps == 0:
-            tic = time()
-            for batch in iterator:
-                error = self.model.eval(batch)
-                errors.append(error)
-            toc = time()
-            _time = toc - tic
-            mean_error = numpy.mean(errors)
-            print '%d, test error: %.3f, time: %.2f' % (self.step_number,
-                                                        mean_error, _time)
-        self.step_number += 1
-
-
-def get_cifar_iterator(which_set,
-                       mode='sequential',
-                       batch_size=128,
-                       num_batches=None,
-                       center=False,
-                       rescale=True,
-                       axes=['c', 0, 1, 'b'],
-                       targets=False):
-
-    dataset = cifar10.CIFAR10(which_set=which_set,
-                              center=center,
-                              rescale=rescale,
-                              axes=axes)
-
-    input_convspace = Conv2DSpace(shape=(32, 32), num_channels=3, axes=axes)
-    # target_space = VectorSpace(dim=10)
-    # data_specs = (input_convspace,'features')
-
-    target_space = VectorSpace(dim=10)
-    data_specs = (CompositeSpace((input_convspace, target_space)), ("features",
-                                                                    "targets"))
-
-    if num_batches:
-        iterator = dataset.iterator(mode=mode,
-                                    batch_size=batch_size,
-                                    num_batches=num_batches,
-                                    data_specs=data_specs)
-    else:
-        iterator = dataset.iterator(mode=mode,
-                                    batch_size=batch_size,
-                                    data_specs=data_specs)
-    return iterator
-
-
-def get_cifar_iterator_reduced(which_set,
-                               mode='sequential',
-                               batch_size=128,
-                               num_batches=None,
-                               center=False,
-                               rescale=True,
-                               axes=['c', 0, 1, 'b'],
-                               targets=False,
-                               num_samples_per_class=100,
-                               which_split=0):
-
-    if which_set == 'train':
-        reduced_dataset_path = '/data/CIFAR-10/reduced/cifar10_' + \
-            str(num_samples_per_class)
-        reduced_dataset_file_path = os.path.join(
-            reduced_dataset_path, 'split_' + str(which_split) + '.pkl')
-        if not os.path.exists(reduced_dataset_file_path):
-            raise Exception('Reduced dataset does not seem to exist.')
-
-        f = open(reduced_dataset_file_path, 'rb')
-        dataset = cPickle.load(f)
-        f.close()
-
-        print('X shape: {}'.format(dataset.X.shape))
-        print('y shape: {}'.format(dataset.y.shape))
-
-    elif which_set == 'test':
-        dataset = cifar10.CIFAR10(which_set=which_set,
-                                  center=center,
-                                  rescale=rescale,
-                                  axes=axes)
-    else:
-        raise Exception('Please specify either train or test.')
-
-    input_convspace = Conv2DSpace(shape=(32, 32), num_channels=3, axes=axes)
-    # target_space = VectorSpace(dim=10)
-    # data_specs = (input_convspace,'features')
-
-    target_space = VectorSpace(dim=10)
-    data_specs = (CompositeSpace((input_convspace, target_space)), ("features",
-                                                                    "targets"))
-
-    if num_batches:
-        iterator = dataset.iterator(mode=mode,
-                                    batch_size=batch_size,
-                                    num_batches=num_batches,
-                                    data_specs=data_specs)
-    else:
-        iterator = dataset.iterator(mode=mode,
-                                    batch_size=batch_size,
-                                    data_specs=data_specs)
-    return iterator
-
-
-# class Normer(object):
-
-#     #
-#     # This Normer class is now deprecated. Please use Normer2 instead.
-#     # This normer unintentionally hard-coded the filter size to 7 and
-#     #   the number of channels to 3.
-#     #
-
-#     def __init__(self, filter_size=7, num_channels=3):
-
-#         # magic numbers that make things work for stl10
-#         self.filter_size = 7
-#         self.pad = self.filter_size / 2  # -1
-#         self.num_channels = 3
-#         self.num_filters = 16
-#         input = T.ftensor4(name='input')
-#         filter = T.ftensor4(name='filter')
-#         gpu_input = gpu_contiguous(input)
-#         gpu_filter = gpu_contiguous(filter)
-
-#         self.conv_func = theano.function([input, filter],
-#                                          FilterActs(pad=3)(gpu_input,
-#                                                            gpu_filter))
-#         n = self.num_channels * self.filter_size * self.filter_size
-#         self.w = numpy.float32(numpy.ones((self.num_channels, self.filter_size,
-#                                            self.filter_size,
-#                                            self.num_filters))) / n
-
-#     def run(self, x_batch):
-#         mean_batch = self.conv_func(x_batch, self.w)
-#         mean_batch = numpy.tile(numpy.array(
-#             mean_batch[0, :, :, :])[None, :, :],
-#             (self.num_channels, 1, 1, 1))
-#         diff_batch = x_batch - mean_batch
-#         std_batch = self.conv_func(diff_batch ** 2, self.w)
-#         std_batch = numpy.tile(numpy.array(std_batch[0, :, :, :])[None, :, :],
-#                                (self.num_channels, 1, 1, 1))
-#         norm_batch = diff_batch / (numpy.array(std_batch) ** (1 / 2))
-#         return norm_batch
-
-
 class Normer2(object):
     def __init__(self, filter_size=7, num_channels=3):
 
@@ -774,54 +612,6 @@ def set_parameters_from_unsupervised_model(model, checkpoint):
         model_params_flipped[i].set_value(checkpoint_params_flipped[i])
 
 
-# class DataAugmenter(object):
-#     def __init__(self, amount_pad, window_shape,
-#                  flip=True,
-#                  color_on=False,
-#                  gray_on=False):
-#         self.amount_pad = amount_pad
-#         self.window_shape = window_shape
-#         self.flip = flip
-#         self.color_on = color_on
-#         self.gray_on = gray_on
-#         if len(window_shape) != 2:
-#             raise ValueError("window_shape should be length 2")
-
-#     def run(self, x_batch):
-#         x_batch_pad = _zero_pad(x_batch, self.amount_pad, axes=(1, 2))
-#         x_batch_pad_aug = random_window_and_flip_c01b(x_batch_pad,
-#                                                       self.window_shape,
-#                                                       out=None,
-#                                                       flip=self.flip)
-#         if self.color_on:
-#             x_batch_out = self._color_augment(x_batch_pad_aug)
-#         elif self.gray_on:
-#             x_batch_out = self._gray_augment(x_batch_pad_aug)
-#         else:
-#             x_batch_out = x_batch_pad_aug
-#         return x_batch_out
-
-#     def _color_augment(self, x_batch):
-#         out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
-#         __, __, __, num_samples = x_batch.shape
-
-#         for i in range(num_samples):
-#             out_batch[:, :, :, i] = color_augment_image(x_batch[:, :, :, i])
-
-#         out_batch *= 2
-#         return out_batch
-
-#     def _gray_augment(self, x_batch):
-#         out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
-#         __, __, __, num_samples = x_batch.shape
-
-#         for i in range(num_samples):
-#             out_batch[:, :, :, i] = gray_augment_image(x_batch[:, :, :, i])
-
-#         out_batch *= 2
-#         return out_batch
-
-
 class Evaluator(object):
     def __init__(self, model, data_container, checkpoint,
                  preprocessor_module_list):
@@ -931,7 +721,6 @@ class DataAugmenter(object):
                    (self.amount_pad, self.amount_pad), (0, 0))
         x_batch_pad = numpy.pad(x_batch, pad_seq, mode='constant')
         x_batch_pad_aug = self._random_window_and_flip(x_batch_pad)
-        
         if self.color_on:
             x_batch_out = self._color_augment(x_batch_pad_aug)
         elif self.gray_on:
@@ -1119,7 +908,6 @@ class DataAugmenter2(object):
                 flip_rv = numpy.random.randint(0, 2)
                 if flip_rv == 1:
                     sample = sample[:, :, ::-1]
-
 
             crop = Crop((width, height), self.crop_shape)
             crop.rotate(angle)

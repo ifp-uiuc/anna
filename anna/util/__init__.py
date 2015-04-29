@@ -576,45 +576,45 @@ def get_cifar_iterator_reduced(which_set,
     return iterator
 
 
-class Normer(object):
+# class Normer(object):
 
-    #
-    # This Normer class is now deprecated. Please use Normer2 instead.
-    # This normer unintentionally hard-coded the filter size to 7 and
-    #   the number of channels to 3.
-    #
+#     #
+#     # This Normer class is now deprecated. Please use Normer2 instead.
+#     # This normer unintentionally hard-coded the filter size to 7 and
+#     #   the number of channels to 3.
+#     #
 
-    def __init__(self, filter_size=7, num_channels=3):
+#     def __init__(self, filter_size=7, num_channels=3):
 
-        # magic numbers that make things work for stl10
-        self.filter_size = 7
-        self.pad = self.filter_size / 2  # -1
-        self.num_channels = 3
-        self.num_filters = 16
-        input = T.ftensor4(name='input')
-        filter = T.ftensor4(name='filter')
-        gpu_input = gpu_contiguous(input)
-        gpu_filter = gpu_contiguous(filter)
+#         # magic numbers that make things work for stl10
+#         self.filter_size = 7
+#         self.pad = self.filter_size / 2  # -1
+#         self.num_channels = 3
+#         self.num_filters = 16
+#         input = T.ftensor4(name='input')
+#         filter = T.ftensor4(name='filter')
+#         gpu_input = gpu_contiguous(input)
+#         gpu_filter = gpu_contiguous(filter)
 
-        self.conv_func = theano.function([input, filter],
-                                         FilterActs(pad=3)(gpu_input,
-                                                           gpu_filter))
-        n = self.num_channels * self.filter_size * self.filter_size
-        self.w = numpy.float32(numpy.ones((self.num_channels, self.filter_size,
-                                           self.filter_size,
-                                           self.num_filters))) / n
+#         self.conv_func = theano.function([input, filter],
+#                                          FilterActs(pad=3)(gpu_input,
+#                                                            gpu_filter))
+#         n = self.num_channels * self.filter_size * self.filter_size
+#         self.w = numpy.float32(numpy.ones((self.num_channels, self.filter_size,
+#                                            self.filter_size,
+#                                            self.num_filters))) / n
 
-    def run(self, x_batch):
-        mean_batch = self.conv_func(x_batch, self.w)
-        mean_batch = numpy.tile(numpy.array(
-            mean_batch[0, :, :, :])[None, :, :],
-            (self.num_channels, 1, 1, 1))
-        diff_batch = x_batch - mean_batch
-        std_batch = self.conv_func(diff_batch ** 2, self.w)
-        std_batch = numpy.tile(numpy.array(std_batch[0, :, :, :])[None, :, :],
-                               (self.num_channels, 1, 1, 1))
-        norm_batch = diff_batch / (numpy.array(std_batch) ** (1 / 2))
-        return norm_batch
+#     def run(self, x_batch):
+#         mean_batch = self.conv_func(x_batch, self.w)
+#         mean_batch = numpy.tile(numpy.array(
+#             mean_batch[0, :, :, :])[None, :, :],
+#             (self.num_channels, 1, 1, 1))
+#         diff_batch = x_batch - mean_batch
+#         std_batch = self.conv_func(diff_batch ** 2, self.w)
+#         std_batch = numpy.tile(numpy.array(std_batch[0, :, :, :])[None, :, :],
+#                                (self.num_channels, 1, 1, 1))
+#         norm_batch = diff_batch / (numpy.array(std_batch) ** (1 / 2))
+#         return norm_batch
 
 
 class Normer2(object):
@@ -774,52 +774,52 @@ def set_parameters_from_unsupervised_model(model, checkpoint):
         model_params_flipped[i].set_value(checkpoint_params_flipped[i])
 
 
-class DataAugmenter(object):
-    def __init__(self, amount_pad, window_shape,
-                 flip=True,
-                 color_on=False,
-                 gray_on=False):
-        self.amount_pad = amount_pad
-        self.window_shape = window_shape
-        self.flip = flip
-        self.color_on = color_on
-        self.gray_on = gray_on
-        if len(window_shape) != 2:
-            raise ValueError("window_shape should be length 2")
+# class DataAugmenter(object):
+#     def __init__(self, amount_pad, window_shape,
+#                  flip=True,
+#                  color_on=False,
+#                  gray_on=False):
+#         self.amount_pad = amount_pad
+#         self.window_shape = window_shape
+#         self.flip = flip
+#         self.color_on = color_on
+#         self.gray_on = gray_on
+#         if len(window_shape) != 2:
+#             raise ValueError("window_shape should be length 2")
 
-    def run(self, x_batch):
-        x_batch_pad = _zero_pad(x_batch, self.amount_pad, axes=(1, 2))
-        x_batch_pad_aug = random_window_and_flip_c01b(x_batch_pad,
-                                                      self.window_shape,
-                                                      out=None,
-                                                      flip=self.flip)
-        if self.color_on:
-            x_batch_out = self._color_augment(x_batch_pad_aug)
-        elif self.gray_on:
-            x_batch_out = self._gray_augment(x_batch_pad_aug)
-        else:
-            x_batch_out = x_batch_pad_aug
-        return x_batch_out
+#     def run(self, x_batch):
+#         x_batch_pad = _zero_pad(x_batch, self.amount_pad, axes=(1, 2))
+#         x_batch_pad_aug = random_window_and_flip_c01b(x_batch_pad,
+#                                                       self.window_shape,
+#                                                       out=None,
+#                                                       flip=self.flip)
+#         if self.color_on:
+#             x_batch_out = self._color_augment(x_batch_pad_aug)
+#         elif self.gray_on:
+#             x_batch_out = self._gray_augment(x_batch_pad_aug)
+#         else:
+#             x_batch_out = x_batch_pad_aug
+#         return x_batch_out
 
-    def _color_augment(self, x_batch):
-        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
-        __, __, __, num_samples = x_batch.shape
+#     def _color_augment(self, x_batch):
+#         out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+#         __, __, __, num_samples = x_batch.shape
 
-        for i in range(num_samples):
-            out_batch[:, :, :, i] = color_augment_image(x_batch[:, :, :, i])
+#         for i in range(num_samples):
+#             out_batch[:, :, :, i] = color_augment_image(x_batch[:, :, :, i])
 
-        out_batch *= 2
-        return out_batch
+#         out_batch *= 2
+#         return out_batch
 
-    def _gray_augment(self, x_batch):
-        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
-        __, __, __, num_samples = x_batch.shape
+#     def _gray_augment(self, x_batch):
+#         out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+#         __, __, __, num_samples = x_batch.shape
 
-        for i in range(num_samples):
-            out_batch[:, :, :, i] = gray_augment_image(x_batch[:, :, :, i])
+#         for i in range(num_samples):
+#             out_batch[:, :, :, i] = gray_augment_image(x_batch[:, :, :, i])
 
-        out_batch *= 2
-        return out_batch
+#         out_batch *= 2
+#         return out_batch
 
 
 class Evaluator(object):
@@ -913,6 +913,78 @@ class Preprocessor(object):
         return batch
 
 
+class DataAugmenter(object):
+    def __init__(self, amount_pad, window_shape,
+                 flip=True,
+                 color_on=False,
+                 gray_on=False):
+        self.amount_pad = amount_pad
+        self.window_shape = window_shape
+        self.flip = flip
+        self.color_on = color_on
+        self.gray_on = gray_on
+        if len(window_shape) != 2:
+            raise ValueError("window_shape should be length 2")
+
+    def run(self, x_batch):
+        pad_seq = ((0, 0), (self.amount_pad, self.amount_pad),
+                   (self.amount_pad, self.amount_pad), (0, 0))
+        x_batch_pad = numpy.pad(x_batch, pad_seq, mode='constant')
+        x_batch_pad_aug = self._random_window_and_flip(x_batch_pad)
+        
+        if self.color_on:
+            x_batch_out = self._color_augment(x_batch_pad_aug)
+        elif self.gray_on:
+            x_batch_out = self._gray_augment(x_batch_pad_aug)
+        else:
+            x_batch_out = x_batch_pad_aug
+        return x_batch_out
+
+    def _random_window_and_flip(self, x_batch_pad):
+        num_channels, _, _, num_images = x_batch_pad.shape
+        crop_batch_shape = (num_channels, self.window_shape[0],
+                            self.window_shape[1], num_images)
+        x_batch_crop = numpy.empty(crop_batch_shape,
+                                   dtype=x_batch_pad.dtype)
+
+        for i in range(num_images):
+            sample = x_batch_pad[:, :, :, i]
+
+            if self.flip:
+                flip_rv = numpy.random.randint(0, 2)
+                if flip_rv == 1:
+                    sample = sample[:, :, ::-1]
+
+            width_start = numpy.random.randint(0, self.amount_pad)
+            height_start = numpy.random.randint(0, self.amount_pad)
+            sample = sample[:,
+                            height_start:(height_start+self.window_shape[0]),
+                            width_start:(width_start+self.window_shape[1])]
+            x_batch_crop[:, :, :, i] = sample
+
+        return x_batch_crop
+
+    def _color_augment(self, x_batch):
+        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+        __, __, __, num_samples = x_batch.shape
+
+        for i in range(num_samples):
+            out_batch[:, :, :, i] = color_augment_image(x_batch[:, :, :, i])
+
+        out_batch *= 2
+        return out_batch
+
+    def _gray_augment(self, x_batch):
+        out_batch = numpy.zeros(x_batch.shape, dtype=x_batch.dtype)
+        __, __, __, num_samples = x_batch.shape
+
+        for i in range(num_samples):
+            out_batch[:, :, :, i] = gray_augment_image(x_batch[:, :, :, i])
+
+        out_batch *= 2
+        return out_batch
+
+
 class Crop(object):
     def __init__(self, input_size, output_size):
         self.input_size = input_size
@@ -991,14 +1063,20 @@ class Crop(object):
 
 
 class DataAugmenter2(object):
-    def __init__(self, crop_shape, flip=True, color_on=False, gray_on=False):
+    def __init__(self, crop_shape, flip=True, scale=False, rotate=False,
+                 color_on=False, gray_on=False, kernel='cudnn'):
         """"""
         self.crop_shape = crop_shape
         self.flip = flip
+        self.scale = scale
+        self.rotate = rotate
         self.color_on = color_on
         self.gray_on = gray_on
+        self.kernel = kernel
         if len(crop_shape) != 2:
             raise ValueError("window_shape should be length 2")
+        if kernel != 'cudnn' and kernel != 'cuda_convnet':
+            raise ValueError("kernel must be cudnn or cuda_convnet")
 
     def run(self, batch):
         """Applies random crops to each image in a batch.
@@ -1010,26 +1088,47 @@ class DataAugmenter2(object):
           batch_out: 4D ndarray with shape (batch_size, channels,
           crop_shape[0], crop_shape[1])
         """
+
+        if self.kernel == 'cuda_convnet':
+            # Transpose to cudnn batch shape (to be switch back later)
+            batch = batch.transpose(3, 0, 1, 2)
+
         batch_size, channels, width, height = batch.shape
         out_shape = (batch_size, channels,
                      self.crop_shape[0], self.crop_shape[1])
         batch_out = numpy.empty(out_shape, dtype=numpy.float32)
 
-        for sample in range(batch_size):
-            angle = (numpy.random.rand() - 0.5) * 10
-            scale = numpy.random.rand() * 0.7 + 0.7
+        for sample_index in range(batch_size):
+            sample = batch[sample, :, :, :]
+
+            if self.rotate:
+                angle = (numpy.random.rand() - 0.5) * 10
+            else:
+                angle = 0.0
+
+            if self.scale:
+                scale = numpy.random.rand() * 0.7 + 0.7
+            else:
+                scale = 1.0
+
             diff = (width-scale*self.crop_shape[0])
             translation_x = numpy.random.rand() * diff - diff / 2
             translation_y = numpy.random.rand() * diff - diff / 2
+
+            if self.flip:
+                flip_rv = numpy.random.randint(0, 2)
+                if flip_rv == 1:
+                    sample = sample[:, :, ::-1]
+
 
             crop = Crop((width, height), self.crop_shape)
             crop.rotate(angle)
             crop.scale(scale)
             crop.centered()
             crop.translate(translation_x, translation_y)
-            output = crop.get(batch[sample, :, :, :])
+            output = crop.get(sample)
 
-            batch_out[sample, :, :, :] = output
+            batch_out[sample_index, :, :, :] = output
 
         if self.color_on:
             x_batch_out = self._color_augment(batch_out)
@@ -1037,6 +1136,10 @@ class DataAugmenter2(object):
             x_batch_out = self._gray_augment(batch_out)
         else:
             x_batch_out = batch_out
+
+        if self.kernel == 'cuda_convnet':
+            x_batch_out = x_batch_out.transpose(1, 2, 3, 0)
+
         return x_batch_out
 
     def _color_augment(self, x_batch):

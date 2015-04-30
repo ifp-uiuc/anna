@@ -852,7 +852,7 @@ class Crop(object):
 
 
 class DataAugmenter2(object):
-    def __init__(self, crop_shape, flip=True, scale=False, rotate=False,
+    def __init__(self, crop_shape, flip=True, scale=True, rotate=True,
                  color_on=False, gray_on=False, kernel='cudnn'):
         """"""
         self.crop_shape = crop_shape
@@ -888,7 +888,7 @@ class DataAugmenter2(object):
         batch_out = numpy.empty(out_shape, dtype=numpy.float32)
 
         for sample_index in range(batch_size):
-            sample = batch[sample, :, :, :]
+            sample = batch[sample_index, :, :, :]
 
             if self.rotate:
                 angle = (numpy.random.rand() - 0.5) * 10

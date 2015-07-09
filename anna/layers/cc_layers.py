@@ -700,3 +700,30 @@ class ShuffleBC01ToC01BLayer(object):
     def output(self, *args, **kwargs):
         input = self.input_layer.output(*args, **kwargs)
         return input.dimshuffle(1, 2, 3, 0)
+
+
+class Deconv2DNoBiasLayerGuidedBackProp(Deconv2DNoBiasLayer):
+    def output(self, input=None, dropout_active=True, *args, **kwargs):
+        if input is None:
+            input = self.input_layer.output(dropout_active=dropout_active,
+                                            *args, **kwargs)
+
+        if dropout_active and (self.dropout > 0.):
+            retain_prob = 1 - self.dropout
+            mask = layers.srng.binomial(input.shape, p=retain_prob,
+                                        dtype='int32').astype('float32')
+            # apply the input mask and rescale the input accordingly.
+            # By doing this it's no longer necessary to rescale the weights
+            # at test time.
+            input = input / retain_prob * mask
+
+        contiguous_input = gpu_contiguous(input)
+        contiguous_filters = gpu_contiguous(self.W)
+        if self.stride == 1:
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters)
+        else:
+            _, x, y, _ = self.get_output_shape()
+            deconved = self.image_acts_op(contiguous_input, contiguous_filters,
+                                          as_tensor_variable((x, y)))
+        mask = (deconved > 0.0) * (self.mirror_layer.input_layer.output() > 0.0)
+        return mask * deconved

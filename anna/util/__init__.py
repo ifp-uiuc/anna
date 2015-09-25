@@ -949,3 +949,40 @@ class DataAugmenter2(object):
 
         out_batch *= 2
         return out_batch
+
+
+class Annealer(object):
+    def __init__(self, model, steps_per_epoch, func=None):
+        self.model = model
+        self.steps_per_epoch = steps_per_epoch
+        if func is None:
+            self.func = self.exp_decay
+        else:
+            self.func = func
+
+        self.step_count = 0
+        self.epoch_count = 0
+        self.init_learning_rate = self.model.learning_rate_symbol.get_value()
+        self.current_learning_rate = self.init_learning_rate
+
+    def run(self):
+        self.step_count += 1
+        if (self.step_count % self.steps_per_epoch) == 0:
+            self.epoch_count += 1
+            # Compute new learning rate
+            new_learning_rate = self.func(self.init_learning_rate,
+                                          self.epoch_count)
+            # Set model's learning rate to new learning rate
+            self.set_learning_rate(self.model, new_learning_rate)
+
+    def set_learning_rate(self, model, new_learning_rate):
+        print 'Learning rate before: ', model.learning_rate_symbol.get_value()
+        model.learning_rate_symbol.set_value(numpy.float32(new_learning_rate))
+        self.current_learning_rate = new_learning_rate
+        print 'Learning rate now: ', model.learning_rate_symbol.get_value()
+
+    def get_current_learning_rate(self):
+        return self.current_learning_rate
+
+    def exp_decay(self, init_learning_rate, epoch_count):
+        return init_learning_rate * (0.1)**(epoch_count)

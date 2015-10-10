@@ -1,4 +1,5 @@
-anna - artifical neural networks, anytime 
+![Anna](./assests/anna.png)
+artifical neural networks, anytime 
 ================
 
 This is a code repository to efficiently train a deconvolutional neural network with rectified linear units.

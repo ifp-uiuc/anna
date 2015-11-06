@@ -85,7 +85,7 @@ Once you have installed all of the dependencies, you will be ready to install an
     
 Now, add anna to your PYTHONPATH environment variable in your ~/.bashrc file so that python knows where to look:
 
-    export $PYTHONPATH=$PYTHONPATH:/path_to_anna/anna
+    export PYTHONPATH=$PYTHONPATH:/path_to_anna/anna
 
 Apply the changes by typing ` source ~/.bashrc ` in the terminal and you're all done! Now just open python and type:
 
